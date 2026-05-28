@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#070711">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ArenaFlow">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="description" content="Gestão inteligente de arenas de futevôlei">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="ArenaFlow">
+  <meta property="og:description" content="Gestão inteligente de arenas de futevôlei">
+  <meta property="og:type" content="website">
+
+  <title>ArenaFlow</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Firebase v9 compat (for simplicity with GitHub Pages) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+</head>
+<body>
+
+  <!-- ══ APP SHELL ══════════════════════════════════════════ -->
+  <div id="app">
+
+    <!-- Screen content -->
+    <div id="screen-container"></div>
+
+    <!-- Bottom navigation (injected by JS) -->
+    <div id="bottom-nav-container"></div>
+
+  </div>
+
+  <!-- ══ OVERLAYS ═══════════════════════════════════════════ -->
+
+  <!-- Modal overlay -->
+  <div id="modal-overlay" class="hidden"></div>
+
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
+  <!-- Loading spinner -->
+  <div id="loading-overlay" class="hidden">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- ══ SCRIPTS ════════════════════════════════════════════ -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- Fullscreen & safe area support -->
+  <script>
+    // iOS standalone detection
+    if (window.navigator.standalone) {
+      document.body.style.paddingTop = 'env(safe-area-inset-top)';
+    }
+
+    // Prevent pull-to-refresh on mobile
+    document.body.addEventListener('touchmove', function(e) {
+      if (e.target === document.body) e.preventDefault();
+    }, { passive: false });
+
+    // Prevent double-tap zoom
+    let lastTap = 0;
+    document.addEventListener('touchend', function(e) {
+      const now = Date.now();
+      if (now - lastTap < 300) e.preventDefault();
+      lastTap = now;
+    }, { passive: false });
+
+    // Handle Android back button
+    window.addEventListener('popstate', function() {
+      if (App && App.back) App.back();
+    });
+
+    // Push history state to intercept back button
+    history.pushState(null, '', window.location.href);
+    window.addEventListener('beforeunload', function() {
+      history.pushState(null, '', window.location.href);
+    });
+  </script>
+</body>
+</html>
