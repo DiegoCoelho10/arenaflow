@@ -158,6 +158,7 @@ const App = {
     this.params = params;
     this.unsubscribers.forEach(u => u && u());
     this.unsubscribers = [];
+    hideLoading();
     renderScreen(screen, params);
     renderNav(screen);
     document.getElementById('screen-container').scrollTop = 0;
