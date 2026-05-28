@@ -94,15 +94,25 @@ const App = {
     });
   },
 
-  tryFullscreen() {
+ tryFullscreen() {
     const el = document.documentElement;
-    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
-    if (req) {
-      document.addEventListener('click', function onFirst() {
-        req.call(el).catch(()=>{});
-        document.removeEventListener('click', onFirst);
-      }, {once: true});
-    }
+    const req = el.requestFullscreen || el.webkitRequestFullscreen ||
+                el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (!req) return;
+    const go = () => req.call(el).catch(() => {});
+    // Tenta na primeira interação
+    ['click','touchstart','touchend'].forEach(ev =>
+      document.addEventListener(ev, function f() {
+        go();
+        document.removeEventListener(ev, f);
+      }, {once: true, passive: true})
+    );
+    // Recupera fullscreen se o usuário sair sem querer
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        setTimeout(() => go(), 300);
+      }
+    });
   },
 
   async loadUserProfile(uid) {
