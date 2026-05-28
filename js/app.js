@@ -824,7 +824,7 @@ function screenStudentHome() {
         <div class="home-greeting">
           <small>${greeting},</small>${firstName} 👋
         </div>
-        <div class="avatar avatar-md" onclick="App.go('${SCREENS.S_PROFILE}')">${getInitials(p.name||'A')}</div>
+        <div onclick="App.go('${SCREENS.S_PROFILE}')">${renderAvatar(p,'avatar-md')}</div>
       </div>
       <div class="grid-2" style="margin-top:16px" id="home-stats">
         <div class="stat-card primary"><div class="stat-value" id="st-month">—</div><div class="stat-label">Aulas este mês</div></div>
@@ -1297,18 +1297,18 @@ function loadRanking(type) {
       c.innerHTML = `
         <div class="podium">
           ${top3.length >= 2 ? `<div class="podium-item podium-2">
-            <div class="avatar avatar-md">${getInitials(top3[1]?.data().name||'?')}</div>
+            <div>${renderAvatar(top3[1]?.data(),'avatar-md')}</div>
             <div class="t-xs t-center" style="font-weight:600">${(top3[1]?.data().name||'').split(' ')[0]}</div>
             <div class="podium-stand">2</div>
           </div>` : ''}
           ${top3.length >= 1 ? `<div class="podium-item podium-1">
             <div class="podium-crown">👑</div>
-            <div class="avatar avatar-lg avatar-ring">${getInitials(top3[0]?.data().name||'?')}</div>
+            <div>${renderAvatar(top3[1]?.data(),'avatar-md')}</div>
             <div class="t-sm t-center" style="font-weight:700">${(top3[0]?.data().name||'').split(' ')[0]}</div>
             <div class="podium-stand">1</div>
           </div>` : ''}
           ${top3.length >= 3 ? `<div class="podium-item podium-3">
-            <div class="avatar avatar-md">${getInitials(top3[2]?.data().name||'?')}</div>
+            <div>${renderAvatar(top3[1]?.data(),'avatar-md')}</div>
             <div class="t-xs t-center" style="font-weight:600">${(top3[2]?.data().name||'').split(' ')[0]}</div>
             <div class="podium-stand">3</div>
           </div>` : ''}
