@@ -1,26 +1,15 @@
-// ============================================================
-// ARENAFLOW — CONFIGURAÇÃO DO FIREBASE
-// Substitua os valores abaixo com as credenciais do seu projeto
-// Firebase Console → Project Settings → Your Apps → Web App
-// ============================================================
-
 const FIREBASE_CONFIG = {
-  apiKey: "SUA_API_KEY_AQUI",
-  authDomain: "seu-projeto.firebaseapp.com",
-  projectId: "seu-projeto",
-  storageBucket: "seu-projeto.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyDauzK1C4o19nd8WyR51AZ_bNa3s2InU1E",
+  authDomain: "arenaflow-37b2f.firebaseapp.com",
+  projectId: "arenaflow-37b2f",
+  storageBucket: "arenaflow-37b2f.firebasestorage.app",
+  messagingSenderId: "777130757869",
+  appId: "1:777130757869:web:8b1aae200246a0b71246e4"
 };
 
-// ID do Superadmin (seu UID do Firebase Auth)
-// Após criar sua conta, vá ao Firebase Console → Authentication → Users → copie seu UID
-const SUPERADMIN_UID = "SEU_UID_DE_SUPERADMIN_AQUI";
+const SUPERADMIN_UID = "SEU_UID_AQUI";
 
-// Inicializar Firebase
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
 const db = firebase.firestore();
-
-// Configurações do Firestore offline
 db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
