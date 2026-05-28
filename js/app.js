@@ -18,42 +18,42 @@ const SCREENS = {
 };
 
 const BADGES = [
-  {id:'first',   emoji:'🌱', name:'Broto',          req:1,   type:'classes'},
-  {id:'b3',      emoji:'👟', name:'Estreante',       req:3,   type:'classes'},
-  {id:'b5',      emoji:'🏐', name:'Na Quadra',       req:5,   type:'classes'},
-  {id:'b10',     emoji:'⚡', name:'Com Gás',         req:10,  type:'classes'},
-  {id:'b15',     emoji:'🔥', name:'Pegando Fogo',    req:15,  type:'classes'},
-  {id:'b20',     emoji:'🌊', name:'Flow',            req:20,  type:'classes'},
-  {id:'b25',     emoji:'💪', name:'Determinado',     req:25,  type:'classes'},
-  {id:'b30',     emoji:'🎯', name:'Focado',          req:30,  type:'classes'},
-  {id:'b40',     emoji:'🦁', name:'Guerreiro',       req:40,  type:'classes'},
-  {id:'b50',     emoji:'💎', name:'Diamante',        req:50,  type:'classes'},
-  {id:'b60',     emoji:'🚀', name:'Decolando',       req:60,  type:'classes'},
-  {id:'b70',     emoji:'🏆', name:'Campeão',         req:70,  type:'classes'},
-  {id:'b80',     emoji:'👑', name:'Rei da Quadra',   req:80,  type:'classes'},
-  {id:'b90',     emoji:'⭐', name:'Estrela',         req:90,  type:'classes'},
-  {id:'b100',    emoji:'🔱', name:'Elite ArenaFlow', req:100, type:'classes'},
-  {id:'b150',    emoji:'🌟', name:'Imortal',         req:150, type:'classes'},
-  {id:'b200',    emoji:'🎖️', name:'Hall da Fama',    req:200, type:'classes'},
-  {id:'b300',    emoji:'🏅', name:'Patrimônio',      req:300, type:'classes'},
-  {id:'streak2', emoji:'📅', name:'Pontual',         req:2,   type:'streak_weeks'},
-  {id:'streak4', emoji:'🗓️', name:'Consistente',     req:4,   type:'streak_weeks'},
-  {id:'streak8', emoji:'🔄', name:'Máquina',         req:8,   type:'streak_weeks'},
-  {id:'streak12',emoji:'🧱', name:'Inabalável',      req:12,  type:'streak_weeks'},
-  {id:'streak26',emoji:'🌙', name:'Dedicado',        req:26,  type:'streak_weeks'},
-  {id:'streak52',emoji:'🌞', name:'Um Ano de Quadra',req:52,  type:'streak_weeks'},
-  {id:'fairplay', emoji:'🤝', name:'Fair Play',      req:10,  type:'no_cancel'},
-  {id:'reliable', emoji:'🛡️', name:'Confiável',      req:0,   type:'monthly_no_cancel'},
-  {id:'fast',     emoji:'⚡', name:'Relâmpago',       req:0,   type:'fast_confirm'},
-  {id:'founder',  emoji:'🏅', name:'Fundador',        req:0,   type:'special'},
-  {id:'birthday', emoji:'🎂', name:'Aniversariante',  req:0,   type:'special'},
-  {id:'rainy',    emoji:'🌧️', name:'Chuva Não Para',  req:5,  type:'special'},
-  {id:'lucky',    emoji:'🎭', name:'Sortudo',          req:3,  type:'waitlist_went'},
-  {id:'social',   emoji:'💬', name:'Animado',          req:50, type:'reactions'},
-  {id:'refer',    emoji:'🤙', name:'Embaixador',        req:1,  type:'referrals'},
-  {id:'xmas',     emoji:'🎄', name:'Espírito Natalino', req:0,  type:'seasonal'},
-  {id:'newyear',  emoji:'🎆', name:'Virada',            req:0,  type:'seasonal'},
-  {id:'summer',   emoji:'☀️', name:'Verão Total',       req:10, type:'seasonal'},
+  {id:'first',    emoji:'🌱', name:'Broto',           req:1,   type:'classes',          desc:'Participe da sua 1ª aula na arena'},
+  {id:'b3',       emoji:'👟', name:'Estreante',        req:3,   type:'classes',          desc:'Complete 3 aulas e mostre que veio pra ficar'},
+  {id:'b5',       emoji:'🏐', name:'Na Quadra',        req:5,   type:'classes',          desc:'Complete 5 aulas — você já faz parte da turma!'},
+  {id:'b10',      emoji:'⚡', name:'Com Gás',          req:10,  type:'classes',          desc:'10 aulas concluídas — a energia não para!'},
+  {id:'b15',      emoji:'🔥', name:'Pegando Fogo',     req:15,  type:'classes',          desc:'15 aulas — você está pegando fogo na quadra!'},
+  {id:'b20',      emoji:'🌊', name:'Flow',             req:20,  type:'classes',          desc:'20 aulas — você entrou no ritmo, no flow!'},
+  {id:'b25',      emoji:'💪', name:'Determinado',      req:25,  type:'classes',          desc:'25 aulas — determinação é o que não falta!'},
+  {id:'b30',      emoji:'🎯', name:'Focado',           req:30,  type:'classes',          desc:'30 aulas com olho no objetivo. Foco total!'},
+  {id:'b40',      emoji:'🦁', name:'Guerreiro',        req:40,  type:'classes',          desc:'40 aulas — raça e garra de verdade!'},
+  {id:'b50',      emoji:'💎', name:'Diamante',         req:50,  type:'classes',          desc:'50 aulas! Marco histórico — você é Diamante!'},
+  {id:'b60',      emoji:'🚀', name:'Decolando',        req:60,  type:'classes',          desc:'60 aulas — você decolou e não para mais!'},
+  {id:'b70',      emoji:'🏆', name:'Campeão',          req:70,  type:'classes',          desc:'70 aulas — poucos chegam aqui. Você é um campeão!'},
+  {id:'b80',      emoji:'👑', name:'Rei da Quadra',    req:80,  type:'classes',          desc:'80 aulas — a quadra tem um novo rei!'},
+  {id:'b90',      emoji:'⭐', name:'Estrela',          req:90,  type:'classes',          desc:'90 aulas — você brilha como uma estrela!'},
+  {id:'b100',     emoji:'🔱', name:'Elite ArenaFlow',  req:100, type:'classes',          desc:'100 aulas! Você é Elite ArenaFlow — lenda confirmada!'},
+  {id:'b150',     emoji:'🌟', name:'Imortal',          req:150, type:'classes',          desc:'150 aulas — imortal na quadra e na história!'},
+  {id:'b200',     emoji:'🎖️', name:'Hall da Fama',     req:200, type:'classes',          desc:'200 aulas — seu nome está no Hall da Fama!'},
+  {id:'b300',     emoji:'🏅', name:'Patrimônio',       req:300, type:'classes',          desc:'300 aulas — você é um patrimônio desta arena!'},
+  {id:'streak2',  emoji:'📅', name:'Pontual',          req:2,   type:'streak_weeks',     desc:'2 semanas seguidas sem faltar uma aula'},
+  {id:'streak4',  emoji:'🗓️', name:'Consistente',      req:4,   type:'streak_weeks',     desc:'4 semanas seguidas — 1 mês perfeito!'},
+  {id:'streak8',  emoji:'🔄', name:'Máquina',          req:8,   type:'streak_weeks',     desc:'8 semanas seguidas sem parar!'},
+  {id:'streak12', emoji:'🧱', name:'Inabalável',       req:12,  type:'streak_weeks',     desc:'12 semanas seguidas — nada te para!'},
+  {id:'streak26', emoji:'🌙', name:'Dedicado',         req:26,  type:'streak_weeks',     desc:'6 meses consecutivos de presença!'},
+  {id:'streak52', emoji:'🌞', name:'Um Ano de Quadra', req:52,  type:'streak_weeks',     desc:'52 semanas seguidas — um ano inteiro!'},
+  {id:'fairplay', emoji:'🤝', name:'Fair Play',        req:10,  type:'no_cancel',        desc:'10 aulas seguidas sem cancelar nenhuma'},
+  {id:'reliable', emoji:'🛡️', name:'Confiável',        req:0,   type:'monthly_no_cancel',desc:'Passe um mês inteiro sem cancelamento'},
+  {id:'fast',     emoji:'⚡', name:'Relâmpago',         req:0,   type:'fast_confirm',     desc:'Confirme em menos de 5 minutos após o convite'},
+  {id:'founder',  emoji:'🏅', name:'Fundador',          req:0,   type:'special',          desc:'Cadastrou-se no 1º mês de funcionamento da arena'},
+  {id:'birthday', emoji:'🎂', name:'Aniversariante',    req:0,   type:'special',          desc:'Participe de uma aula no mês do seu aniversário'},
+  {id:'rainy',    emoji:'🌧️', name:'Chuva Não Para',    req:5,   type:'special',          desc:'5 aulas em dias de chuva — nada te para!'},
+  {id:'lucky',    emoji:'🎭', name:'Sortudo',            req:3,   type:'waitlist_went',    desc:'Chamado da fila de espera 3x e foi em todas!'},
+  {id:'social',   emoji:'💬', name:'Animado',            req:50,  type:'reactions',        desc:'Dê 50 reações nas conquistas dos colegas'},
+  {id:'refer',    emoji:'🤙', name:'Embaixador',          req:1,   type:'referrals',       desc:'Indique um amigo que se cadastre na arena'},
+  {id:'xmas',     emoji:'🎄', name:'Espírito Natalino',  req:0,   type:'seasonal',         desc:'Participe de uma aula em dezembro'},
+  {id:'newyear',  emoji:'🎆', name:'Virada',              req:0,   type:'seasonal',         desc:'Aula na semana do ano novo'},
+  {id:'summer',   emoji:'☀️', name:'Verão Total',         req:10,  type:'seasonal',         desc:'10 aulas no verão (Dez–Mar)'},
 ];
 
 const STATUS_LABELS = {
@@ -259,6 +259,54 @@ function confetti() {
   setTimeout(() => c.remove(), 3000);
 }
 
+// ── AVATAR COM FOTO ──────────────────────────────────────────
+function renderAvatar(profile, sizeClass, extra='') {
+  const photo = profile?.photoBase64;
+  if (photo) {
+    return `<div class="avatar ${sizeClass} ${extra}" style="padding:0;overflow:hidden;background:transparent">
+      <img src="${photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+    </div>`;
+  }
+  return `<div class="avatar ${sizeClass} ${extra}">${getInitials(profile?.name||'?')}</div>`;
+}
+
+window.uploadProfilePhoto = function() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    showLoading();
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 200; canvas.height = 200;
+        const ctx = canvas.getContext('2d');
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 200, 200);
+        const base64 = canvas.toDataURL('image/jpeg', 0.75);
+        try {
+          await db.collection('users').doc(App.user.uid).update({ photoBase64: base64 });
+          if (App.arenaId) {
+            await db.collection('arenas').doc(App.arenaId).collection('students')
+              .doc(App.user.uid).update({ photoBase64: base64 }).catch(()=>{});
+          }
+          App.profile = { ...App.profile, photoBase64: base64 };
+          hideLoading();
+          showToast('Foto atualizada! ✅', 'success');
+          App.go(SCREENS.S_PROFILE);
+        } catch(err) { hideLoading(); showToast('Erro ao salvar foto','error'); }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+};
 function getInitials(name='') {
   return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
 }
@@ -956,8 +1004,8 @@ function loadClassesForDay(dateStr) {
   if (!App.arenaId) return;
   const list = document.getElementById('classes-list');
   if (!list) return;
-  list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div><div class="t-muted">Carregando...</div></div>`;
-
+  list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
+  const studentSlots = App.profile?.slots || [];
   let q = db.collection('arenas').doc(App.arenaId).collection('classes')
     .where('dateStr','==',dateStr).orderBy('startTime');
   if (window._currentMod && window._currentMod !== 'all') {
@@ -965,11 +1013,22 @@ function loadClassesForDay(dateStr) {
   }
   q.get().then(snap => {
     if (!list) return;
-    if (snap.empty) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Sem aulas neste dia</div><div class="empty-text">Nenhuma aula agendada para esta data</div></div>`;
+    let docs = snap.docs;
+    // Filtrar pelo horário do aluno
+    if (studentSlots.length > 0) {
+      docs = docs.filter(d => studentSlots.includes(d.data().startTime));
+    }
+    if (docs.length === 0) {
+      const msg = studentSlots.length > 0
+        ? `<div class="empty-state"><div class="empty-emoji">⏰</div>
+            <div class="empty-title">Sem aulas no seu horário</div>
+            <div class="empty-text">Seus horários: ${studentSlots.join(' • ')}<br>Fale com o gestor para mais informações.</div></div>`
+        : `<div class="empty-state"><div class="empty-emoji">🏖️</div>
+            <div class="empty-title">Sem aulas neste dia</div></div>`;
+      list.innerHTML = msg;
       return;
     }
-    renderClassCards(snap.docs, list);
+    renderClassCards(docs, list);
   });
 }
 
@@ -1021,6 +1080,22 @@ function renderClassCards(docs, container) {
 
 window.enrollClass = async function(clsId) {
   if (!App.user || !App.arenaId) return;
+   // Verificar horário autorizado
+  const studentSlots = App.profile?.slots || [];
+  if (studentSlots.length > 0) {
+    const clsCheck = await db.collection('arenas').doc(App.arenaId)
+      .collection('classes').doc(clsId).get();
+    const clsData = clsCheck.data();
+    if (clsData && !studentSlots.includes(clsData.startTime)) {
+      showModal({
+        icon:'⛔', iconBg:'var(--danger-dim)',
+        title:'Horário não autorizado',
+        text:`Você está matriculado apenas no(s) horário(s): ${studentSlots.join(', ')}. Fale com o gestor para alterar sua turma.`,
+        actions:[{label:'Entendi', style:'btn-outline', close:true}]
+      });
+      return;
+    }
+  }
   showLoading();
   try {
     const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
@@ -1314,7 +1389,12 @@ function screenStudentProfile() {
   const earned = p.badges || [];
   return `<div class="screen">
     <div class="profile-header">
-      <div class="avatar avatar-xl">${getInitials(p.name||'A')}</div>
+      <div onclick="uploadProfilePhoto()" style="position:relative;cursor:pointer;display:inline-block">
+  ${renderAvatar(p,'avatar-xl')}
+  <div style="position:absolute;bottom:2px;right:2px;width:30px;height:30px;
+    background:var(--primary);border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:15px;border:2px solid var(--bg)">📷</div>
+</div>
       <div class="t-h1">${p.name||'Aluno'}</div>
       <div class="t-sm t-muted">${p.email||''}</div>
       <div class="profile-stats" style="margin-top:16px">
@@ -1332,7 +1412,7 @@ function screenStudentProfile() {
     <div class="badge-grid" id="badge-grid">
       ${BADGES.map(b => {
         const isEarned = earned.includes(b.id);
-        return `<div class="badge-item ${isEarned?'earned':'locked'}" ${isEarned?`onclick="showBadgeDetail('${b.id}')"`:''}
+      return `<div class="badge-item ${isEarned?'earned':'locked'}" onclick="showBadgeDetail('${b.id}',${isEarned})"
           title="${b.name}">
           <span class="badge-emoji">${b.emoji}</span>
           <span class="badge-name">${b.name}</span>
@@ -1360,14 +1440,40 @@ function screenStudentProfile() {
   </div>`;
 }
 
-window.showBadgeDetail = function(badgeId) {
+window.showBadgeDetail = function(badgeId, isEarned) {
   const b = BADGES.find(x => x.id === badgeId);
   if (!b) return;
+  const p = App.profile || {};
+  const total = p.totalClasses || 0;
+  const streakWeeks = p.streakWeeks || 0;
+  let progress = '';
+  if (!isEarned && b.type === 'classes' && b.req > 0) {
+    const pct = Math.min(Math.round(total / b.req * 100), 100);
+    progress = `<div style="margin-top:14px">
+      <div class="flex justify-between" style="margin-bottom:6px">
+        <span class="t-xs t-muted">Seu progresso</span>
+        <span class="t-xs t-primary">${total}/${b.req} aulas</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+  if (!isEarned && b.type === 'streak_weeks' && b.req > 0) {
+    const pct = Math.min(Math.round(streakWeeks / b.req * 100), 100);
+    progress = `<div style="margin-top:14px">
+      <div class="flex justify-between" style="margin-bottom:6px">
+        <span class="t-xs t-muted">Sequência atual</span>
+        <span class="t-xs t-primary">${streakWeeks}/${b.req} semanas</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
   showModal({
-    icon: b.emoji, iconBg:'var(--primary-dim)',
-    title: b.name,
-    text: `Emblema conquistado! Continue participando das aulas para desbloquear mais conquistas.`,
-    actions:[{label:'Fechar', style:'btn-outline', close:true}]
+    icon: b.emoji,
+    iconBg: isEarned ? 'var(--success-dim)' : 'var(--surface)',
+    title: isEarned ? `${b.name} ✅` : `🔒 ${b.name}`,
+    text: b.desc,
+    html: progress,
+    actions:[{label: isEarned ? 'Incrível! 🎉' : 'Vou conquistar!', style: isEarned ? 'btn-success' : 'btn-primary', close:true}]
   });
 };
 
@@ -1935,6 +2041,27 @@ function liveAdminStudentDetail() {
           <div class="profile-stat"><div class="profile-stat-val">${s.streakWeeks||0}🔥</div><div class="profile-stat-lbl">Streak</div></div>
         </div>
       </div>
+      <div class="section-header" style="margin-top:8px">
+        <span class="section-title">⏰ Horários autorizados</span>
+      </div>
+      <div style="padding:0 20px 16px">
+        <div style="background:var(--surface);border-radius:var(--r-md);overflow:hidden;
+          border:1px solid var(--border);margin-bottom:12px">
+          ${(s.slots||[]).length ? (s.slots||[]).map(slot =>
+            `<div class="flex items-center gap-10" style="padding:12px 16px;border-bottom:1px solid var(--border)">
+              <span style="font-size:20px">⏰</span>
+              <span class="t-h3 flex-1">${slot}</span>
+              <button class="btn btn-danger btn-sm" onclick="removeStudentSlot('${uid}','${slot}')">Remover</button>
+            </div>`
+          ).join('') : `<div class="t-sm t-muted" style="padding:16px;text-align:center">
+            ⚠️ Nenhum horário configurado — aluno não vê aulas ainda
+          </div>`}
+        </div>
+        <div class="flex gap-8">
+          <input class="input flex-1" id="new-slot-input" type="time" placeholder="19:00">
+          <button class="btn btn-primary" onclick="addStudentSlot('${uid}')">+ Adicionar</button>
+        </div>
+      </div>
       <div style="padding:0 20px">
         <div class="flex gap-10" style="margin-bottom:16px">
           ${s.status!=='blocked'
@@ -1954,6 +2081,36 @@ function liveAdminStudentDetail() {
       </div>`;
   });
 }
+window.addStudentSlot = async function(uid) {
+  const val = document.getElementById('new-slot-input')?.value;
+  if (!val) { showToast('Selecione o horário','error'); return; }
+  showLoading();
+  try {
+    const slotStr = val; // formato HH:MM
+    await db.collection('arenas').doc(App.arenaId).collection('students').doc(uid)
+      .update({ slots: firebase.firestore.FieldValue.arrayUnion(slotStr) });
+    await db.collection('users').doc(uid)
+      .update({ slots: firebase.firestore.FieldValue.arrayUnion(slotStr) }).catch(()=>{});
+    hideLoading();
+    showToast(`Horário ${slotStr} adicionado! ✅`,'success');
+    liveAdminStudentDetail();
+  } catch(e) { hideLoading(); showToast('Erro ao adicionar','error'); }
+};
+
+window.removeStudentSlot = async function(uid, slot) {
+  confirmModal('Remover horário?',`O aluno não verá mais as aulas das ${slot}.`,'⏰', async () => {
+    showLoading();
+    try {
+      await db.collection('arenas').doc(App.arenaId).collection('students').doc(uid)
+        .update({ slots: firebase.firestore.FieldValue.arrayRemove(slot) });
+      await db.collection('users').doc(uid)
+        .update({ slots: firebase.firestore.FieldValue.arrayRemove(slot) }).catch(()=>{});
+      hideLoading();
+      showToast(`Horário ${slot} removido`,'warning');
+      liveAdminStudentDetail();
+    } catch(e) { hideLoading(); showToast('Erro','error'); }
+  });
+};
 
 window.blockStudent = async function(uid) {
   confirmModal('Bloquear aluno?','O aluno perderá acesso ao app desta arena.','⛔', async () => {
