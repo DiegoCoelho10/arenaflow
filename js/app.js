@@ -770,10 +770,9 @@ function updateRegStep(titles, subs) {
 
 function validateRegStep() {
   if (regStep === 1) {
-    if (regStep === 1) {
     const name = document.getElementById('reg-name')?.value.trim();
     const email = document.getElementById('reg-email')?.value.trim();
-    const arenaCode = regData.arenaCode || '';
+    const arenaCode = document.getElementById('reg-arena-code')?.value?.trim().toUpperCase() || '';
     if (!name || name.split(' ').length < 2) { showToast('Digite seu nome completo', 'error'); return false; }
     if (!validateEmail(email)) { showToast('Digite um e-mail válido', 'error'); return false; }
     regData.name = name; regData.email = email;
@@ -796,7 +795,6 @@ function validateRegStep() {
   }
   return true;
 }
-
 async function submitRegister() {
   showLoading();
   try {
