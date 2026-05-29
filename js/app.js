@@ -1167,8 +1167,24 @@ function loadClassesForDay(dateStr) {
     if (!list) return;
     let docs = snap.docs.sort((a,b) => a.data().startTime.localeCompare(b.data().startTime));
     // Filtrar pelo horário do aluno
+    // Filtrar pelo horário do aluno
     if (studentSlots.length > 0) {
       docs = docs.filter(d => studentSlots.includes(d.data().startTime));
+    }
+    // Filtrar pelo nível do aluno
+    const studentNivel = App.profile?.nivel;
+    if (studentNivel) {
+      docs = docs.filter(d => {
+        const clsNivel = d.data().nivel;
+        if (!clsNivel) return true;
+        if (studentNivel === 'intermediario_avancado') {
+          return clsNivel === 'intermediario' || clsNivel === 'avancado' || clsNivel === 'intermediario_avancado';
+        }
+        if (clsNivel === 'intermediario_avancado') {
+          return studentNivel === 'intermediario' || studentNivel === 'avancado';
+        }
+        return clsNivel === studentNivel;
+      });
     }
     if (docs.length === 0) {
       const msg = studentSlots.length > 0
@@ -1203,7 +1219,20 @@ function renderClassCards(docs, container) {
       let actionBtn = '';
       if (!isPast) {
         if (!status || status === 'cancelled') {
-          actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();enrollClass('${clsId}')">Participar</button>`;
+          const tipo = App.profile?.tipo || 'avulso';
+          const minHours = tipo === 'mensalista' ? 24 : 12;
+          const clsDateTime = new Date(`${cls.dateStr}T${cls.startTime}`);
+          const hoursUntil = (clsDateTime - new Date()) / (1000 * 60 * 60);
+          if (hoursUntil > minHours) {
+            const hoursLeft = Math.floor(hoursUntil - minHours);
+            const minsLeft = Math.floor(((hoursUntil - minHours) % 1) * 60);
+            actionBtn = `<div class="t-center">
+              <div class="t-xs t-muted">${tipo==='mensalista'?'⭐':'🎫'} Abre em</div>
+              <div style="font-size:13px;font-weight:700;color:var(--warning)">${hoursLeft}h ${minsLeft}min</div>
+            </div>`;
+          } else {
+            actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();enrollClass('${clsId}')">Participar</button>`;
+          }
         } else if (status === 'waitlist') {
           actionBtn = `<span class="status-pill status-waitlist">Fila #${waitPos||'?'}</span>`;
         } else {
@@ -1243,6 +1272,29 @@ window.enrollClass = async function(clsId) {
         icon:'⛔', iconBg:'var(--danger-dim)',
         title:'Horário não autorizado',
         text:`Você está matriculado apenas no(s) horário(s): ${studentSlots.join(', ')}. Fale com o gestor para alterar sua turma.`,
+        actions:[{label:'Entendi', style:'btn-outline', close:true}]
+      });
+      return;
+    }
+  }
+   // Verificar tempo de antecedência por tipo de aluno
+  const clsSnapTime = await db.collection('arenas').doc(App.arenaId)
+    .collection('classes').doc(clsId).get();
+  const clsDataTime = clsSnapTime.data();
+  if (clsDataTime) {
+    const now = new Date();
+    const clsDate = new Date(`${clsDataTime.dateStr}T${clsDataTime.startTime}`);
+    const hoursUntil = (clsDate - now) / (1000 * 60 * 60);
+    const tipo = App.profile?.tipo || 'avulso';
+    const minHours = tipo === 'mensalista' ? 24 : 12;
+    if (hoursUntil > minHours) {
+      const hoursLeft = Math.floor(hoursUntil - minHours);
+      const minsLeft = Math.floor(((hoursUntil - minHours) % 1) * 60);
+      showModal({
+        icon: tipo === 'mensalista' ? '⭐' : '🎫',
+        iconBg: 'var(--warning-dim)',
+        title: 'Ainda não liberado',
+        text: `${tipo === 'mensalista' ? 'Mensalistas' : 'Avulsos'} podem se inscrever a partir de ${minHours}h antes da aula. Inscrições abrem em: ${hoursLeft}h ${minsLeft}min`,
         actions:[{label:'Entendi', style:'btn-outline', close:true}]
       });
       return;
@@ -1549,6 +1601,10 @@ function screenStudentProfile() {
 </div>
       <div class="t-h1">${p.name||'Aluno'}</div>
       <div class="t-sm t-muted">${p.email||''}</div>
+      <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;flex-wrap:wrap">
+        ${p.nivel ? `<span class="badge ${p.nivel==='iniciante'?'badge-success':p.nivel==='intermediario'?'badge-warning':p.nivel==='avancado'?'badge-danger':p.nivel==='feminino'?'badge-accent':'badge-muted'}">${p.nivel==='iniciante'?'🟢':p.nivel==='intermediario'?'🟡':p.nivel==='avancado'?'🔴':p.nivel==='feminino'?'🩷':'🟠'} ${p.nivel}</span>` : ''}
+        ${p.tipo ? `<span class="badge ${p.tipo==='mensalista'?'badge-primary':'badge-muted'}">${p.tipo==='mensalista'?'⭐ Mensalista — inscrições 24h antes':'🎫 Avulso — inscrições 12h antes'}</span>` : ''}
+      </div>
       <div class="profile-stats" style="margin-top:16px">
         <div class="profile-stat"><div class="profile-stat-val">${p.totalClasses||0}</div><div class="profile-stat-lbl">Total aulas</div></div>
         <div class="profile-stat"><div class="profile-stat-val">${p.monthClasses||0}</div><div class="profile-stat-lbl">Este mês</div></div>
@@ -1749,6 +1805,7 @@ function liveAdminHome() {
             <div>
               <div class="t-h3">${c.modality||'Aula'}</div>
               <div class="t-sm t-muted">${c.startTime} – ${c.endTime}${c.court?' • '+c.court:''}</div>
+              ${c.nivel ? `<span class="badge ${c.nivel==='iniciante'?'badge-success':c.nivel==='intermediario'?'badge-warning':c.nivel==='avancado'?'badge-danger':c.nivel==='feminino'?'badge-accent':'badge-muted'}" style="margin-top:4px;display:inline-flex">${c.nivel==='iniciante'?'🟢':c.nivel==='intermediario'?'🟡':c.nivel==='avancado'?'🔴':c.nivel==='feminino'?'🩷':'🟠'} ${c.nivel}</span>` : ''}
             </div>
             <div class="t-center">
               <div class="t-h2" style="color:var(--primary)">${c.spotsUsed||0}/${c.maxSpots}</div>
@@ -1822,6 +1879,7 @@ function loadAdminDayClasses(dateStr) {
             <div>
               <div class="t-h3">${c.modality||'Aula'}</div>
               <div class="t-sm t-muted">${c.startTime} – ${c.endTime}${c.court?' • '+c.court:''}</div>
+              ${c.nivel ? `<span class="badge ${c.nivel==='iniciante'?'badge-success':c.nivel==='intermediario'?'badge-warning':c.nivel==='avancado'?'badge-danger':c.nivel==='feminino'?'badge-accent':'badge-muted'} badge-sm" style="margin-top:4px">${c.nivel==='iniciante'?'🟢':c.nivel==='intermediario'?'🟡':c.nivel==='avancado'?'🔴':c.nivel==='feminino'?'🩷':'🟠'} ${c.nivel}</span>` : ''}
             </div>
             <div>
               <div class="t-h2 t-center" style="color:var(--primary)">${c.spotsUsed||0}/${c.maxSpots}</div>
@@ -2011,6 +2069,16 @@ function screenAdminCreate() {
       <div></div>
     </div>
     <div style="padding:16px 20px;display:flex;flex-direction:column;gap:16px">
+     <div class="field">
+        <label>Nível da turma</label>
+        <select class="input" id="cls-nivel">
+          <option value="iniciante">🟢 Iniciante</option>
+          <option value="intermediario">🟡 Intermediário</option>
+          <option value="avancado">🔴 Avançado</option>
+          <option value="intermediario_avancado">🟠 Intermediário/Avançado</option>
+          <option value="feminino">🩷 Feminino</option>
+        </select>
+      </div>
       <div class="field">
         <label>Modalidade</label>
         <select class="input" id="cls-modality">
@@ -2067,6 +2135,7 @@ function attachAdminCreate() {
     const end      = document.getElementById('cls-end')?.value;
     const spots    = parseInt(document.getElementById('cls-spots')?.value);
     const invite   = document.getElementById('cls-invite')?.value;
+    const nivel    = document.getElementById('cls-nivel')?.value;
     if (!dateStr||!start||!end||!spots) { showToast('Preencha todos os campos','error'); return; }
     if (start >= end) { showToast('Horário de início deve ser antes do término','error'); return; }
     showLoading();
@@ -2075,7 +2144,7 @@ function attachAdminCreate() {
       const clsRef = await db.collection('arenas').doc(App.arenaId).collection('classes').add({
         modality, dateStr, startTime:start, endTime:end, court,
         maxSpots: spots, spotsUsed: 0, waitlist: [],
-        status: 'open', invite,
+        status: 'open', invite, nivel,
         startTimestamp: firebase.firestore.Timestamp.fromDate(dateObj),
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -2148,6 +2217,14 @@ function renderStudentList(students) {
       <div class="flex-1">
         <div class="t-h3">${s.name||'—'}</div>
         <div class="t-xs t-muted">${s.totalClasses||0} aulas • ${s.badges?.length||0} emblemas</div>
+        <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
+          ${s.nivel ? `<span class="badge ${s.nivel==='iniciante'?'badge-success':s.nivel==='intermediario'?'badge-warning':s.nivel==='avancado'?'badge-danger':s.nivel==='feminino'?'badge-accent':'badge-muted'}">${s.nivel==='iniciante'?'🟢':s.nivel==='intermediario'?'🟡':s.nivel==='avancado'?'🔴':s.nivel==='feminino'?'🩷':'🟠'} ${s.nivel}</span>` : '<span class="badge badge-muted">sem nível</span>'}
+          ${s.tipo ? `<span class="badge ${s.tipo==='mensalista'?'badge-primary':'badge-muted'}">${s.tipo==='mensalista'?'⭐ Mensalista':'🎫 Avulso'}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
+          ${s.nivel ? `<span class="badge ${s.nivel==='iniciante'?'badge-success':s.nivel==='intermediario'?'badge-warning':s.nivel==='avancado'?'badge-danger':s.nivel==='feminino'?'badge-accent':'badge-muted'}">${s.nivel==='iniciante'?'🟢':s.nivel==='intermediario'?'🟡':s.nivel==='avancado'?'🔴':s.nivel==='feminino'?'🩷':'🟠'} ${s.nivel}</span>` : '<span class="badge badge-muted">sem nível</span>'}
+          ${s.tipo ? `<span class="badge ${s.tipo==='mensalista'?'badge-primary':'badge-muted'}">${s.tipo==='mensalista'?'⭐ Mensalista':'🎫 Avulso'}</span>` : ''}
+        </div>
       </div>
       <div class="flex items-center gap-8">
         <span class="dot ${statusDot}"></span>
@@ -2192,6 +2269,30 @@ function liveAdminStudentDetail() {
           <div class="profile-stat"><div class="profile-stat-val">${s.totalClasses||0}</div><div class="profile-stat-lbl">Total</div></div>
           <div class="profile-stat"><div class="profile-stat-val">${s.monthClasses||0}</div><div class="profile-stat-lbl">Mês</div></div>
           <div class="profile-stat"><div class="profile-stat-val">${s.streakWeeks||0}🔥</div><div class="profile-stat-lbl">Streak</div></div>
+        </div>
+      </div>
+      <div class="section-header" style="margin-top:8px">
+        <span class="section-title">🎯 Nível e Tipo</span>
+      </div>
+      <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:12px">
+        <div class="field">
+          <label>Nível do aluno</label>
+          <select class="input" id="student-nivel" onchange="updateStudentNivel('${uid}',this.value)">
+            <option value="" ${!s.nivel?'selected':''}>Selecione o nível...</option>
+            <option value="iniciante" ${s.nivel==='iniciante'?'selected':''}>🟢 Iniciante</option>
+            <option value="intermediario" ${s.nivel==='intermediario'?'selected':''}>🟡 Intermediário</option>
+            <option value="avancado" ${s.nivel==='avancado'?'selected':''}>🔴 Avançado</option>
+            <option value="intermediario_avancado" ${s.nivel==='intermediario_avancado'?'selected':''}>🟠 Intermediário/Avançado</option>
+            <option value="feminino" ${s.nivel==='feminino'?'selected':''}>🩷 Feminino</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tipo de aluno</label>
+          <select class="input" id="student-tipo" onchange="updateStudentTipo('${uid}',this.value)">
+            <option value="" ${!s.tipo?'selected':''}>Selecione o tipo...</option>
+            <option value="mensalista" ${s.tipo==='mensalista'?'selected':''}>⭐ Mensalista</option>
+            <option value="avulso" ${s.tipo==='avulso'?'selected':''}>🎫 Avulso</option>
+          </select>
         </div>
       </div>
       <div class="section-header" style="margin-top:8px">
@@ -2263,6 +2364,29 @@ window.removeStudentSlot = async function(uid, slot) {
       liveAdminStudentDetail();
     } catch(e) { hideLoading(); showToast('Erro','error'); }
   });
+};
+window.updateStudentNivel = async function(uid, nivel) {
+  if (!nivel) return;
+  showLoading();
+  try {
+    await db.collection('arenas').doc(App.arenaId).collection('students').doc(uid)
+      .update({ nivel });
+    await db.collection('users').doc(uid).update({ nivel }).catch(()=>{});
+    hideLoading();
+    showToast(`Nível atualizado: ${nivel} ✅`, 'success');
+  } catch(e) { hideLoading(); showToast('Erro ao atualizar nível','error'); }
+};
+
+window.updateStudentTipo = async function(uid, tipo) {
+  if (!tipo) return;
+  showLoading();
+  try {
+    await db.collection('arenas').doc(App.arenaId).collection('students').doc(uid)
+      .update({ tipo });
+    await db.collection('users').doc(uid).update({ tipo }).catch(()=>{});
+    hideLoading();
+    showToast(`Tipo atualizado: ${tipo} ✅`, 'success');
+  } catch(e) { hideLoading(); showToast('Erro ao atualizar tipo','error'); }
 };
 
 window.blockStudent = async function(uid) {
