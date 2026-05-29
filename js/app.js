@@ -2915,3 +2915,4 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loading-overlay').innerHTML = `<div class="spinner"></div>`;
   showLoading();
 });
+// ── FIM DO ARQUIVO ──────────────────────────────────────────
