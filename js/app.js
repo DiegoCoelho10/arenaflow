@@ -3155,8 +3155,8 @@ async function checkAndAwardBadges(uid, arenaId) {
           confetti();
           showModal({
             icon: b.emoji, iconBg:'var(--primary-dim)',
-            title:`Novo Emblema!`,
-            text:`Você conquistou: ${b.name}`,
+            title:'Novo Emblema!',
+            text:'Você conquistou: ' + b.name,
             actions:[{label:'Incrível! 🎉', style:'btn-success', close:true}]
           });
         }, i * 1500);
