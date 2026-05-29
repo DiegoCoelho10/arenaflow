@@ -269,6 +269,47 @@ function renderAvatar(profile, sizeClass, extra='') {
   }
   return `<div class="avatar ${sizeClass} ${extra}">${getInitials(profile?.name||'?')}</div>`;
 }
+window.uploadArenaPhoto = function() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    showLoading();
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 800; canvas.height = 400;
+        const ctx = canvas.getContext('2d');
+        // Crop centralizado landscape
+        const targetRatio = 2;
+        const imgRatio = img.width / img.height;
+        let sx=0, sy=0, sw=img.width, sh=img.height;
+        if (imgRatio > targetRatio) {
+          sw = img.height * targetRatio;
+          sx = (img.width - sw) / 2;
+        } else {
+          sh = img.width / targetRatio;
+          sy = (img.height - sh) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 800, 400);
+        const base64 = canvas.toDataURL('image/jpeg', 0.8);
+        try {
+          await db.collection('arenas').doc(App.arenaId).update({ photoBase64: base64 });
+          App.arena = { ...App.arena, photoBase64: base64 };
+          hideLoading();
+          showToast('Foto da arena atualizada! ✅', 'success');
+          App.go(SCREENS.A_SETTINGS);
+        } catch(err) { hideLoading(); showToast('Erro ao salvar foto','error'); }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+};
 
 window.uploadProfilePhoto = function() {
   const input = document.createElement('input');
