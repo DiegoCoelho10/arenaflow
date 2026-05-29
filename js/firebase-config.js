@@ -7,7 +7,7 @@ const FIREBASE_CONFIG = {
   appId: "1:777130757869:web:8b1aae200246a0b71246e4"
 };
 
-const SUPERADMIN_UID = "SEU_UID_AQUI";
+const SUPERADMIN_UID = "ThZAyy5U4eMjxS9WGmh67UluqUE3";
 
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
