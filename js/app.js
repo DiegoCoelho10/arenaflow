@@ -8,6 +8,7 @@
 // ── CONSTANTS ───────────────────────────────────────────────
 const SCREENS = {
   SPLASH:'splash', LOGIN:'login', REGISTER:'register', FORGOT:'forgot',
+  INVITE:'invite',
   S_HOME:'s-home', S_SCHEDULE:'s-schedule', S_CLASSES:'s-classes',
   S_RANKING:'s-ranking', S_PROFILE:'s-profile',
   A_HOME:'a-home', A_SCHEDULE:'a-schedule', A_CLASS:'a-class',
@@ -2765,6 +2766,13 @@ function screenSASettings() {
 // ═══════════════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════════════
+
+function generateInviteCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random()*chars.length)];
+  return code;
+}
 function getWeekDays() {
   const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const result = [];
