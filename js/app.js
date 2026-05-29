@@ -393,6 +393,7 @@ function renderScreen(screen, params) {
     [SCREENS.LOGIN]:     screenLogin,
     [SCREENS.REGISTER]:  screenRegister,
     [SCREENS.FORGOT]:    screenForgot,
+    [SCREENS.INVITE]:    screenInvite,
     [SCREENS.S_HOME]:    screenStudentHome,
     [SCREENS.S_SCHEDULE]:screenStudentSchedule,
     [SCREENS.S_CLASSES]: screenStudentClasses,
@@ -421,7 +422,7 @@ function renderScreen(screen, params) {
 
 function renderNav(screen) {
   const c = document.getElementById('bottom-nav-container');
-  const noNav = [SCREENS.SPLASH, SCREENS.LOGIN, SCREENS.REGISTER, SCREENS.FORGOT];
+  const noNav = [SCREENS.SPLASH, SCREENS.LOGIN, SCREENS.REGISTER, SCREENS.FORGOT, SCREENS.INVITE];
   if (noNav.includes(screen)) { c.innerHTML = ''; return; }
   const role = App.role;
   let items = [];
@@ -464,6 +465,7 @@ function attachListeners(screen) {
     [SCREENS.LOGIN]:     attachLogin,
     [SCREENS.REGISTER]:  attachRegister,
     [SCREENS.FORGOT]:    attachForgot,
+    [SCREENS.INVITE]:    attachInvite,
     [SCREENS.A_CREATE]:  attachAdminCreate,
     [SCREENS.A_SETTINGS]:attachAdminSettings,
     [SCREENS.SA_NEW_ARENA]:attachSANewArena,
@@ -500,13 +502,17 @@ function screenSplash() {
     <div class="splash-illustration">🏐</div>
     <div class="splash-actions">
       <button class="btn btn-primary btn-lg btn-full" id="btn-login">Entrar na minha conta</button>
-      <button class="btn btn-outline btn-lg btn-full" id="btn-register">Criar conta de aluno</button>
+     <button class="btn btn-outline btn-lg btn-full" id="btn-register">Criar conta de aluno</button>
+      <button class="btn btn-ghost btn-full" id="btn-gestor" style="color:var(--text-2);font-size:14px">
+        🏟️ Sou gestor de uma arena — tenho um código
+      </button>
     </div>
   </div>`;
 }
 function attachSplash() {
-  document.getElementById('btn-login')?.addEventListener('click', () => App.go(SCREENS.LOGIN));
+ document.getElementById('btn-login')?.addEventListener('click', () => App.go(SCREENS.LOGIN));
   document.getElementById('btn-register')?.addEventListener('click', () => App.go(SCREENS.REGISTER));
+  document.getElementById('btn-gestor')?.addEventListener('click', () => App.go(SCREENS.INVITE));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -806,6 +812,66 @@ async function submitRegister() {
 // ═══════════════════════════════════════════════════════════
 //  FORGOT PASSWORD
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+//  TELA DE CÓDIGO DE CONVITE (Gestor)
+// ═══════════════════════════════════════════════════════════
+function screenInvite() {
+  return `<div class="screen no-nav auth-screen">
+    <div class="auth-header">
+      <button class="back-btn" onclick="App.go('${SCREENS.SPLASH}')">←</button>
+      <br><br>
+      <div style="font-size:52px;margin-bottom:16px">🔑</div>
+      <h1 class="t-h1">Código de convite</h1>
+      <p class="t-body t-muted" style="margin-top:6px">
+        Digite o código de 6 dígitos que o responsável pelo ArenaFlow enviou para você
+      </p>
+    </div>
+    <div class="auth-form">
+      <div class="field">
+        <label>Seu e-mail</label>
+        <input class="input" id="inv-email" type="email" placeholder="seu@email.com">
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <div class="input-group">
+          <input class="input" id="inv-pwd" type="password" placeholder="Sua senha">
+        </div>
+      </div>
+      <div class="field">
+        <label>Código de convite</label>
+        <input class="input" id="inv-code" type="text" placeholder="Ex: AB3X7K"
+          maxlength="6" style="text-transform:uppercase;letter-spacing:6px;
+          font-size:22px;font-weight:800;text-align:center">
+      </div>
+      <p class="t-xs t-muted t-center">
+        Não tem conta ainda? Crie normalmente com "Criar conta de aluno" e depois use o código
+      </p>
+      <button class="btn btn-primary btn-full btn-lg" id="btn-invite-submit">
+        🏟️ Entrar como Gestor
+      </button>
+      <div class="auth-footer">
+        <a onclick="App.go('${SCREENS.SPLASH}')" style="cursor:pointer">← Voltar</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function attachInvite() {
+  document.getElementById('inv-code')?.addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+  });
+
+  document.getElementById('btn-invite-submit')?.addEventListener('click', async () => {
+    const email = document.getElementById('inv-email')?.value.trim();
+    const pwd   = document.getElementById('inv-pwd')?.value;
+    const code  = document.getElementById('inv-code')?.value.trim().toUpperCase();
+
+    if (!email || !validateEmail(email)) { showToast('E-mail inválido','error'); return; }
+    if (!pwd) { showToast('Digite sua senha','error'); return; }
+    if (code.length !== 6) { showToast('Código deve ter 6 caracteres','error'); return; }
+
+    show
 function screenForgot() {
   return `<div class="screen no-nav auth-screen">
     <div class="auth-header">
@@ -2669,12 +2735,14 @@ function attachSANewArena() {
     try {
       // Create the arena in Firestore
       // Note: gestor account is created separately by the gestor
+     const inviteCode = generateInviteCode();
       await db.collection('arenas').add({
         name, city: `${city}${state?'/'+state:''}`, address:addr,
         gestorName:gname, gestorEmail:gemail, gestorPhone:gphone,
         status: plan==='trial' ? 'trial' : 'active',
         plan, planValue: value||199,
         studentCount: 0, paymentStatus: 'pending',
+        inviteCode,
         settings: { confirmationHours:3, waitlistResponseHours:1 },
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -2683,7 +2751,7 @@ function attachSANewArena() {
       showModal({
         icon:'🏟️', iconBg:'var(--success-dim)',
         title:'Arena cadastrada!',
-        text:`${name} foi criada com sucesso. Envie as credenciais de acesso para ${gemail}.`,
+        text:`${name} criada! Código de convite do gestor: 🔑 ${inviteCode} — envie para ${gemail}.`,
         actions:[{label:'Ótimo!', style:'btn-success', close:true}],
         onClose: () => App.go(SCREENS.SA_ARENAS)
       });
