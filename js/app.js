@@ -773,7 +773,7 @@ function validateRegStep() {
     if (regStep === 1) {
     const name = document.getElementById('reg-name')?.value.trim();
     const email = document.getElementById('reg-email')?.value.trim();
-    const arenaCode = document.getElementById('reg-arena-code')?.value.trim().toUpperCase();
+    const arenaCode = regData.arenaCode || '';
     if (!name || name.split(' ').length < 2) { showToast('Digite seu nome completo', 'error'); return false; }
     if (!validateEmail(email)) { showToast('Digite um e-mail válido', 'error'); return false; }
     regData.name = name; regData.email = email;
@@ -1634,6 +1634,9 @@ function screenStudentProfile() {
       ${!p.arenaId ? `<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="joinArena()">
         🏟️ Entrar em uma arena
       </button>` : ''}
+      ${!p.arenaId ? `<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="joinArena()">
+        🏟️ Entrar em uma arena
+      </button>` : ''}
       <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;flex-wrap:wrap">
         ${p.nivel ? `<span class="badge ${p.nivel==='iniciante'?'badge-success':p.nivel==='intermediario'?'badge-warning':p.nivel==='avancado'?'badge-danger':p.nivel==='feminino'?'badge-accent':'badge-muted'}">${p.nivel==='iniciante'?'🟢':p.nivel==='intermediario'?'🟡':p.nivel==='avancado'?'🔴':p.nivel==='feminino'?'🩷':'🟠'} ${p.nivel}</span>` : ''}
         ${p.tipo ? `<span class="badge ${p.tipo==='mensalista'?'badge-primary':'badge-muted'}">${p.tipo==='mensalista'?'⭐ Mensalista — inscrições 24h antes':'🎫 Avulso — inscrições 12h antes'}</span>` : ''}
@@ -1768,7 +1771,57 @@ window.joinArena = function() {
     }
   };
 };
-
+window.joinArena = function() {
+  showModal({
+    icon:'🏟️', iconBg:'var(--primary-dim)',
+    title:'Entrar em uma arena',
+    text:'Digite o código fornecido pelo gestor da sua arena:',
+    html:`<div style="margin-top:16px">
+      <input class="input" id="join-code" type="text" placeholder="Ex: AJJ123"
+        maxlength="6" style="text-transform:uppercase;letter-spacing:4px;
+        font-size:22px;font-weight:800;text-align:center">
+    </div>`,
+    actions:[
+      {label:'Cancelar', style:'btn-outline', close:true},
+      {label:'Entrar', style:'btn-primary', id:'confirm-join', close:true}
+    ]
+  });
+  document.getElementById('join-code')?.addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+  });
+  window._modalCallbacks['confirm-join'] = async () => {
+    const code = document.getElementById('join-code')?.value.trim().toUpperCase();
+    if (!code || code.length < 4) { showToast('Digite o código da arena','error'); return; }
+    showLoading();
+    try {
+      const snap = await db.collection('arenas')
+        .where('studentCode','==',code).limit(1).get();
+      if (snap.empty) {
+        hideLoading();
+        showToast('Código inválido — verifique com o gestor','error');
+        return;
+      }
+      const arenaId = snap.docs[0].id;
+      const arena = snap.docs[0].data();
+      await db.collection('users').doc(App.user.uid).update({ arenaId });
+      App.profile = { ...App.profile, arenaId };
+      App.arenaId = arenaId;
+      App.arena = arena;
+      hideLoading();
+      confetti();
+      showModal({
+        icon:'🎉', iconBg:'var(--success-dim)',
+        title:'Bem-vindo!',
+        text:`Você entrou na ${arena.name}! O gestor vai configurar seu nível em breve.`,
+        actions:[{label:'Ótimo!', style:'btn-success', close:true}],
+        onClose: () => App.go(SCREENS.S_HOME)
+      });
+    } catch(e) {
+      hideLoading();
+      showToast('Erro ao entrar na arena','error');
+    }
+  };
+};
 window.toggleBiometric = function() {
   const stored = localStorage.getItem('af_biometric');
   if (stored) {
