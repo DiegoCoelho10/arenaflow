@@ -1158,14 +1158,14 @@ function loadClassesForDay(dateStr) {
   if (!list) return;
   list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
   const studentSlots = App.profile?.slots || [];
-  let q = db.collection('arenas').doc(App.arenaId).collection('classes')
-    .where('dateStr','==',dateStr).orderBy('startTime');
+ let q = db.collection('arenas').doc(App.arenaId).collection('classes')
+    .where('dateStr','==',dateStr);
   if (window._currentMod && window._currentMod !== 'all') {
     q = q.where('modality','==',window._currentMod);
   }
   q.get().then(snap => {
     if (!list) return;
-    let docs = snap.docs;
+    let docs = snap.docs.sort((a,b) => a.data().startTime.localeCompare(b.data().startTime));
     // Filtrar pelo horário do aluno
     if (studentSlots.length > 0) {
       docs = docs.filter(d => studentSlots.includes(d.data().startTime));
@@ -1807,13 +1807,14 @@ function loadAdminDayClasses(dateStr) {
   const list = document.getElementById('admin-classes-list');
   if (!list || !App.arenaId) return;
   list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
-  db.collection('arenas').doc(App.arenaId).collection('classes')
-    .where('dateStr','==',dateStr).orderBy('startTime').get().then(snap => {
+ db.collection('arenas').doc(App.arenaId).collection('classes')
+    .where('dateStr','==',dateStr).get().then(snap => {
+      const sortedDocs = snap.docs.sort((a,b) => a.data().startTime.localeCompare(b.data().startTime));
       if (snap.empty) {
         list.innerHTML = `<div class="empty-state" style="padding:32px 0"><div class="empty-emoji">📭</div><div class="empty-title">Sem aulas neste dia</div><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="App.go('${SCREENS.A_CREATE}')">＋ Criar aula</button></div>`;
         return;
       }
-      list.innerHTML = snap.docs.map(d => {
+      list.innerHTML = sortedDocs.map(d => {
         const c = d.data();
         const pct = Math.round((c.spotsUsed||0)/(c.maxSpots||1)*100);
         return `<div class="class-card status-${getClassStatus(c)}" onclick="App.go('${SCREENS.A_CLASS}',{clsId:'${d.id}'})">
