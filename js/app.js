@@ -1714,7 +1714,7 @@ function screenAdminHome() {
 function liveAdminHome() {
   if (!App.arenaId) return;
   const aId = App.arenaId;
-  const today = new Date().toISOString().slice(0,10);
+  const today = toLocalDateStr();
 
   // Today classes
   const unsub = db.collection('arenas').doc(aId).collection('classes')
@@ -2290,7 +2290,7 @@ function screenAdminReports() {
 }
 function liveAdminReports() {
   if (!App.arenaId) return;
-  const month = new Date().toISOString().slice(0,7);
+  const month = toLocalDateStr().slice(0,7);
   const monthStart = `${month}-01`;
   db.collection('arenas').doc(App.arenaId).collection('classes')
     .where('dateStr','>=',monthStart).get().then(snap => {
