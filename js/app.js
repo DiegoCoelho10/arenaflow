@@ -649,6 +649,14 @@ function screenRegister() {
       <div class="auth-footer" style="margin-top:12px">
         Já tem conta? <a onclick="App.go('${SCREENS.LOGIN}')" style="cursor:pointer">Entrar</a>
       </div>
+      <div id="student-code-section" style="display:none;margin-top:16px">
+        <div class="field">
+          <label>Código da arena (opcional)</label>
+          <input class="input" id="reg-arena-code" type="text" placeholder="Ex: AJJ123"
+            maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-size:18px;font-weight:700;text-align:center">
+          <span class="input-hint">Peça o código para o gestor da sua arena</span>
+        </div>
+      </div>
     </div>
   </div>`;
 }
@@ -730,6 +738,8 @@ function updateRegStep(titles, subs) {
   }
   const fc = document.getElementById('reg-form-content');
   fc.innerHTML = [regFormStep1,regFormStep2,regFormStep3][regStep-1]();
+  const codeSection = document.getElementById('student-code-section');
+  if (codeSection) codeSection.style.display = regStep === 3 ? 'block' : 'none';
 
   if (regStep === 1) {
     document.getElementById('reg-name').value = regData.name || '';
@@ -783,10 +793,21 @@ async function submitRegister() {
   try {
     const cred = await auth.createUserWithEmailAndPassword(regData.email, regData.password);
     await cred.user.updateProfile({ displayName: regData.name });
+    const arenaCode = document.getElementById('reg-arena-code')?.value.trim().toUpperCase();
+    let arenaId = null;
+    if (arenaCode) {
+      const arenaSnap = await db.collection('arenas')
+        .where('studentCode','==',arenaCode).limit(1).get();
+      if (!arenaSnap.empty) {
+        arenaId = arenaSnap.docs[0].id;
+      } else {
+        showToast('Código da arena inválido — cadastro feito sem arena','warning');
+      }
+    }
     await db.collection('users').doc(cred.user.uid).set({
       name: regData.name, email: regData.email,
       age: regData.age, sex: regData.sex,
-      role: 'student', arenaId: null,
+      role: 'student', arenaId,
       totalClasses: 0, monthClasses: 0,
       streak: 0, streakWeeks: 0,
       badges: ['first'], reactions: 0, referrals: 0,
