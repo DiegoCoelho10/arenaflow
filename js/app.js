@@ -3047,7 +3047,7 @@ function liveSAFinancial() {
         <div class="mrr-hero" style="margin:16px 0">
           <div class="t-label t-dim">MRR Total</div>
           <div class="mrr-value">R$ ${total.toLocaleString('pt-BR')}</div>
-          ${overdue ? `<div class="t-sm" style="color:var(--danger);margin-top:6px">R$ ${overdue.toLocaleString('pt-BR')} em inadimplência</div>` : ''}
+          ${overdue ? '<div class="t-sm" style="color:var(--danger);margin-top:6px">R$ ' + overdue.toLocaleString('pt-BR') + ' em inadimplência</div>' : ''}
         </div>
         <div style="background:var(--card);border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border)">
           ${rows||'<div class="t-muted t-center" style="padding:24px">Nenhuma arena</div>'}
