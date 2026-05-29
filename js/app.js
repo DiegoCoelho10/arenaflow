@@ -1634,9 +1634,6 @@ function screenStudentProfile() {
       ${!p.arenaId ? `<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="joinArena()">
         🏟️ Entrar em uma arena
       </button>` : ''}
-      ${!p.arenaId ? `<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="joinArena()">
-        🏟️ Entrar em uma arena
-      </button>` : ''}
       <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;flex-wrap:wrap">
         ${p.nivel ? `<span class="badge ${p.nivel==='iniciante'?'badge-success':p.nivel==='intermediario'?'badge-warning':p.nivel==='avancado'?'badge-danger':p.nivel==='feminino'?'badge-accent':'badge-muted'}">${p.nivel==='iniciante'?'🟢':p.nivel==='intermediario'?'🟡':p.nivel==='avancado'?'🔴':p.nivel==='feminino'?'🩷':'🟠'} ${p.nivel}</span>` : ''}
         ${p.tipo ? `<span class="badge ${p.tipo==='mensalista'?'badge-primary':'badge-muted'}">${p.tipo==='mensalista'?'⭐ Mensalista — inscrições 24h antes':'🎫 Avulso — inscrições 12h antes'}</span>` : ''}
