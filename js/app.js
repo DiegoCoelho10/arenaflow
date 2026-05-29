@@ -2881,6 +2881,10 @@ function generateInviteCode() {
   for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random()*chars.length)];
   return code;
 }
+function toLocalDateStr(date) {
+  const d = date ? new Date(date) : new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function getWeekDays() {
   const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const result = [];
@@ -2889,7 +2893,7 @@ function getWeekDays() {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
     result.push({
-      iso:  d.toISOString().slice(0,10),
+      iso:  toLocalDateStr(d),
       name: i===0 ? 'Hoje' : days[d.getDay()],
       num:  d.getDate()
     });
