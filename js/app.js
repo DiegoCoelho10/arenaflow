@@ -1884,7 +1884,7 @@ function liveAdminHome() {
             <div>
               <div class="t-h3">${c.modality||'Aula'}</div>
               <div class="t-sm t-muted">${c.startTime} – ${c.endTime}${c.court?' • '+c.court:''}</div>
-              ${c.nivel ? `<span class="badge ${c.nivel==='iniciante'?'badge-success':c.nivel==='intermediario'?'badge-warning':c.nivel==='avancado'?'badge-danger':c.nivel==='feminino'?'badge-accent':'badge-muted'}" style="margin-top:4px;display:inline-flex">${c.nivel==='iniciante'?'🟢':c.nivel==='intermediario'?'🟡':c.nivel==='avancado'?'🔴':c.nivel==='feminino'?'🩷':'🟠'} ${c.nivel}</span>` : ''}
+              ${c.nivel ? '<span class="badge ' + (c.nivel==='iniciante'?'badge-success':c.nivel==='intermediario'?'badge-warning':c.nivel==='avancado'?'badge-danger':c.nivel==='feminino'?'badge-accent':'badge-muted') + '" style="margin-top:4px;display:inline-flex">' + (c.nivel==='iniciante'?'🟢':c.nivel==='intermediario'?'🟡':c.nivel==='avancado'?'🔴':c.nivel==='feminino'?'🩷':'🟠') + ' ' + c.nivel + '</span>' : ''}
             </div>
             <div class="t-center">
               <div class="t-h2" style="color:var(--primary)">${c.spotsUsed||0}/${c.maxSpots}</div>
@@ -1894,7 +1894,7 @@ function liveAdminHome() {
           <div class="spots-bar" style="margin-top:10px">
             <div class="spots-fill ${pct>=90?'low':pct>=60?'medium':'high'}" style="width:${Math.min(pct,100)}%"></div>
           </div>
-          ${c.waitlist?.length ? `<div class="t-xs" style="margin-top:6px;color:var(--accent)">${c.waitlist.length} na fila de espera</div>` : ''}
+          ${c.waitlist?.length ? '<div class="t-xs" style="margin-top:6px;color:var(--accent)">' + c.waitlist.length + ' na fila de espera</div>' : ''}
         </div>`;
       }).join('');
     });
