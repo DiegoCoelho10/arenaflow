@@ -2291,18 +2291,19 @@ function renderStudentList(students) {
   }
   list.innerHTML = students.map(s => {
     const statusDot = {active:'dot-success', inactive:'dot-warning', blocked:'dot-danger'}[s.status||'active'];
+    const nivelBadge = s.nivel
+      ? '<span class="badge ' + (s.nivel==='iniciante'?'badge-success':s.nivel==='intermediario'?'badge-warning':s.nivel==='avancado'?'badge-danger':s.nivel==='feminino'?'badge-accent':'badge-muted') + '">' + (s.nivel==='iniciante'?'🟢':s.nivel==='intermediario'?'🟡':s.nivel==='avancado'?'🔴':s.nivel==='feminino'?'🩷':'🟠') + ' ' + s.nivel + '</span>'
+      : '<span class="badge badge-muted">sem nível</span>';
+    const tipoBadge = s.tipo
+      ? '<span class="badge ' + (s.tipo==='mensalista'?'badge-primary':'badge-muted') + '">' + (s.tipo==='mensalista'?'⭐ Mensalista':'🎫 Avulso') + '</span>'
+      : '';
     return `<div class="arena-row" onclick="App.go('${SCREENS.A_STUDENT}',{uid:'${s.id}'})">
       <div class="avatar avatar-md">${getInitials(s.name||'?')}</div>
       <div class="flex-1">
         <div class="t-h3">${s.name||'—'}</div>
         <div class="t-xs t-muted">${s.totalClasses||0} aulas • ${s.badges?.length||0} emblemas</div>
         <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
-          ${s.nivel ? `<span class="badge ${s.nivel==='iniciante'?'badge-success':s.nivel==='intermediario'?'badge-warning':s.nivel==='avancado'?'badge-danger':s.nivel==='feminino'?'badge-accent':'badge-muted'}">${s.nivel==='iniciante'?'🟢':s.nivel==='intermediario'?'🟡':s.nivel==='avancado'?'🔴':s.nivel==='feminino'?'🩷':'🟠'} ${s.nivel}</span>` : '<span class="badge badge-muted">sem nível</span>'}
-          ${s.tipo ? `<span class="badge ${s.tipo==='mensalista'?'badge-primary':'badge-muted'}">${s.tipo==='mensalista'?'⭐ Mensalista':'🎫 Avulso'}</span>` : ''}
-        </div>
-        <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
-          ${s.nivel ? `<span class="badge ${s.nivel==='iniciante'?'badge-success':s.nivel==='intermediario'?'badge-warning':s.nivel==='avancado'?'badge-danger':s.nivel==='feminino'?'badge-accent':'badge-muted'}">${s.nivel==='iniciante'?'🟢':s.nivel==='intermediario'?'🟡':s.nivel==='avancado'?'🔴':s.nivel==='feminino'?'🩷':'🟠'} ${s.nivel}</span>` : '<span class="badge badge-muted">sem nível</span>'}
-          ${s.tipo ? `<span class="badge ${s.tipo==='mensalista'?'badge-primary':'badge-muted'}">${s.tipo==='mensalista'?'⭐ Mensalista':'🎫 Avulso'}</span>` : ''}
+          ${nivelBadge}${tipoBadge}
         </div>
       </div>
       <div class="flex items-center gap-8">
@@ -2312,7 +2313,6 @@ function renderStudentList(students) {
     </div>`;
   }).join('');
 }
-
 // ═══════════════════════════════════════════════════════════
 //  ADMIN — STUDENT DETAIL
 // ═══════════════════════════════════════════════════════════
