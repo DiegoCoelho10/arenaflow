@@ -870,8 +870,52 @@ function attachInvite() {
     if (!email || !validateEmail(email)) { showToast('E-mail inválido','error'); return; }
     if (!pwd) { showToast('Digite sua senha','error'); return; }
     if (code.length !== 6) { showToast('Código deve ter 6 caracteres','error'); return; }
-
-    show
+    showLoading();
+    try {
+      const arenaSnap = await db.collection('arenas')
+        .where('inviteCode','==',code).limit(1).get();
+      if (arenaSnap.empty) {
+        hideLoading();
+        showToast('Código inválido ou expirado','error');
+        return;
+      }
+      const arenaDoc = arenaSnap.docs[0];
+      const arenaId  = arenaDoc.id;
+      const arena    = arenaDoc.data();
+      let userCred;
+      try {
+        userCred = await auth.signInWithEmailAndPassword(email, pwd);
+      } catch(e) {
+        if (e.code === 'auth/user-not-found') {
+          userCred = await auth.createUserWithEmailAndPassword(email, pwd);
+        } else { throw e; }
+      }
+      const uid = userCred.user.uid;
+      await db.collection('users').doc(uid).set({
+        email, role: 'arena_admin', arenaId,
+        name: arena.gestorName || email.split('@')[0],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      hideLoading();
+      confetti();
+      showModal({
+        icon:'🏟️', iconBg:'var(--success-dim)',
+        title:'Bem-vindo, Gestor!',
+        text:`Você foi vinculado à ${arena.name} com sucesso!`,
+        actions:[{label:'Abrir painel', style:'btn-success', close:true}],
+        onClose: () => App.loadUserProfile(uid)
+      });
+    } catch(e) {
+      hideLoading();
+      const msgs = {
+        'auth/wrong-password':'Senha incorreta',
+        'auth/invalid-email':'E-mail inválido',
+        'auth/weak-password':'Senha fraca — mínimo 6 caracteres'
+      };
+      showToast(msgs[e.code] || 'Erro: ' + e.message,'error');
+    }
+  });
+}
 function screenForgot() {
   return `<div class="screen no-nav auth-screen">
     <div class="auth-header">
