@@ -2751,8 +2751,10 @@ function screenSAArenaDetail() {
 function liveAdminStudents() {
   if (App.screen === SCREENS.A_STUDENTS) {
     if (!App.arenaId) return;
-    const unsub = db.collection('arenas').doc(App.arenaId).collection('students')
-      .orderBy('name').onSnapshot(snap => {
+    const unsub = db.collection('users')
+      .where('arenaId','==',App.arenaId)
+      .where('role','==','student')
+      .onSnapshot(snap => {
         window._allStudents = snap.docs.map(d=>({id:d.id,...d.data()}));
         const active = window._allStudents.filter(s=>(s.status||'active')==='active');
         renderStudentList(active);
