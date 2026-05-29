@@ -971,7 +971,7 @@ function screenStudentHome() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
   return `<div class="screen">
-   <div class="home-hero" style="${App.arena?.photoBase64
+   <div class="home-hero" style="${App.arena?.photoBase64 ? 'background-image:linear-gradient(to bottom,rgba(7,7,17,0.55),rgba(7,7,17,0.92)),url(' + JSON.stringify(App.arena.photoBase64) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(160deg,rgba(61,110,255,0.12) 0%,transparent 60%),linear-gradient(220deg,rgba(255,94,26,0.08) 0%,transparent 60%);'}">
       ? `background-image:linear-gradient(to bottom,rgba(7,7,17,0.55),rgba(7,7,17,0.92)),url('${App.arena.photoBase64}');background-size:cover;background-position:center;`
       : 'background:linear-gradient(160deg,rgba(61,110,255,0.12) 0%,transparent 60%),linear-gradient(220deg,rgba(255,94,26,0.08) 0%,transparent 60%);'}">
       <div class="flex items-center justify-between">
@@ -1680,9 +1680,7 @@ function screenAdminHome() {
   const a = App.arena || {};
   const g = App.profile || {};
   return `<div class="screen">
-    <div class="home-hero" style="${a.photoBase64
-      ? `background-image:linear-gradient(to bottom,rgba(7,7,17,0.45),rgba(7,7,17,0.9)),url('${a.photoBase64}');background-size:cover;background-position:center;`
-      : 'background:linear-gradient(160deg,rgba(255,94,26,0.12) 0%,transparent 60%);'}">
+    <div class="home-hero" style="${a.photoBase64 ? 'background-image:linear-gradient(to bottom,rgba(7,7,17,0.45),rgba(7,7,17,0.9)),url(' + JSON.stringify(a.photoBase64) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(160deg,rgba(255,94,26,0.12) 0%,transparent 60%);'}">
       <div class="flex items-center justify-between">
         <div class="home-greeting">
           <small>Painel da Arena</small>${a.name||'Arena'} 🏟️
