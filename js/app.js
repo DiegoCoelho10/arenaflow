@@ -860,7 +860,9 @@ function screenStudentHome() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
   return `<div class="screen">
-    <div class="home-hero">
+   <div class="home-hero" style="${App.arena?.photoBase64
+      ? `background-image:linear-gradient(to bottom,rgba(7,7,17,0.55),rgba(7,7,17,0.92)),url('${App.arena.photoBase64}');background-size:cover;background-position:center;`
+      : 'background:linear-gradient(160deg,rgba(61,110,255,0.12) 0%,transparent 60%),linear-gradient(220deg,rgba(255,94,26,0.08) 0%,transparent 60%);'}">
       <div class="flex items-center justify-between">
         <div class="home-greeting">
           <small>${greeting},</small>${firstName} 👋
@@ -1567,7 +1569,9 @@ function screenAdminHome() {
   const a = App.arena || {};
   const g = App.profile || {};
   return `<div class="screen">
-    <div class="home-hero">
+    <div class="home-hero" style="${a.photoBase64
+      ? `background-image:linear-gradient(to bottom,rgba(7,7,17,0.45),rgba(7,7,17,0.9)),url('${a.photoBase64}');background-size:cover;background-position:center;`
+      : 'background:linear-gradient(160deg,rgba(255,94,26,0.12) 0%,transparent 60%);'}">
       <div class="flex items-center justify-between">
         <div class="home-greeting">
           <small>Painel da Arena</small>${a.name||'Arena'} 🏟️
@@ -2226,6 +2230,15 @@ function screenAdminSettings() {
     <div class="topbar"><span class="topbar-title">⚙️ Configurações</span></div>
     <div class="settings-group">
       <div class="settings-label">Arena</div>
+      <div class="settings-item" onclick="uploadArenaPhoto()">
+        <div class="settings-icon si-blue" style="overflow:hidden;padding:0">
+          ${a.photoBase64
+            ? `<img src="${a.photoBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`
+            : `<span style="font-size:18px;display:flex;align-items:center;justify-content:center;height:100%">📸</span>`}
+        </div>
+        <div class="flex-1"><div class="t-h3">Foto da arena</div><div class="t-xs t-muted">${a.photoBase64?'Toque para alterar':'Adicionar foto da quadra'}</div></div>
+        <span class="settings-chevron">›</span>
+      </div>
       <div class="settings-item" onclick="editArenaInfo()">
         <div class="settings-icon si-blue">🏟️</div>
         <div class="flex-1"><div class="t-h3">Informações da arena</div><div class="t-xs t-muted">${a.name||'—'}</div></div>
@@ -2470,7 +2483,11 @@ function renderArenasList(arenas) {
   const statusLabel = {active:'Ativo', trial:'Trial', suspended:'Suspenso'};
   list.innerHTML = arenas.map(a =>
     `<div class="arena-row" onclick="App.go('${SCREENS.SA_ARENA}',{arenaId:'${a.id}'})">
-      <div class="arena-icon">🏟️</div>
+     <div class="arena-icon" style="overflow:hidden;padding:0">
+        ${a.photoBase64
+          ? `<img src="${a.photoBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r-sm)">`
+          : `<span style="font-size:20px;display:flex;align-items:center;justify-content:center;height:100%">🏟️</span>`}
+      </div>
       <div class="flex-1">
         <div class="t-h3">${a.name||'—'}</div>
         <div class="t-xs t-muted">${a.city||'—'} • ${a.gestorName||'—'}</div>
