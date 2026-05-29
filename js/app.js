@@ -972,8 +972,6 @@ function screenStudentHome() {
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
   return `<div class="screen">
    <div class="home-hero" style="${App.arena?.photoBase64 ? 'background-image:linear-gradient(to bottom,rgba(7,7,17,0.55),rgba(7,7,17,0.92)),url(' + JSON.stringify(App.arena.photoBase64) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(160deg,rgba(61,110,255,0.12) 0%,transparent 60%),linear-gradient(220deg,rgba(255,94,26,0.08) 0%,transparent 60%);'}">
-      ? `background-image:linear-gradient(to bottom,rgba(7,7,17,0.55),rgba(7,7,17,0.92)),url('${App.arena.photoBase64}');background-size:cover;background-position:center;`
-      : 'background:linear-gradient(160deg,rgba(61,110,255,0.12) 0%,transparent 60%),linear-gradient(220deg,rgba(255,94,26,0.08) 0%,transparent 60%);'}">
       <div class="flex items-center justify-between">
         <div class="home-greeting">
           <small>${greeting},</small>${firstName} 👋
