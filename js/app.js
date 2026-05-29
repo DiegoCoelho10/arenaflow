@@ -2471,10 +2471,14 @@ function screenAdminSettings() {
         <div class="flex-1"><div class="t-h3">Foto da arena</div><div class="t-xs t-muted">${a.photoBase64?'Toque para alterar':'Adicionar foto da quadra'}</div></div>
         <span class="settings-chevron">›</span>
       </div>
-      <div class="settings-item" onclick="editArenaInfo()">
-        <div class="settings-icon si-blue">🏟️</div>
-        <div class="flex-1"><div class="t-h3">Informações da arena</div><div class="t-xs t-muted">${a.name||'—'}</div></div>
-        <span class="settings-chevron">›</span>
+      <div class="settings-item">
+        <div class="settings-icon si-green">🎫</div>
+        <div class="flex-1">
+          <div class="t-h3">Código para alunos</div>
+          <div style="font-size:22px;font-weight:800;letter-spacing:4px;color:var(--success)">${a.studentCode||'—'}</div>
+          <div class="t-xs t-muted">Compartilhe com seus alunos</div>
+        </div>
+        <button class="btn btn-success btn-sm" onclick="navigator.clipboard.writeText('${a.studentCode||''}').then(()=>showToast('Código copiado!','success'))">Copiar</button>
       </div>
     </div>
     <div class="settings-group">
@@ -2902,7 +2906,8 @@ function attachSANewArena() {
     try {
       // Create the arena in Firestore
       // Note: gestor account is created separately by the gestor
-     const inviteCode = generateInviteCode();
+  const inviteCode = generateInviteCode();
+      const studentCode = generateInviteCode();
       await db.collection('arenas').add({
         name, city: `${city}${state?'/'+state:''}`, address:addr,
         gestorName:gname, gestorEmail:gemail, gestorPhone:gphone,
@@ -2910,6 +2915,7 @@ function attachSANewArena() {
         plan, planValue: value||199,
         studentCount: 0, paymentStatus: 'pending',
         inviteCode,
+        studentCode,
         settings: { confirmationHours:3, waitlistResponseHours:1 },
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
