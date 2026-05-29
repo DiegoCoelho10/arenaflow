@@ -1621,22 +1621,22 @@ function screenStudentProfile() {
   const p = App.profile || {};
   const totalBadges = BADGES.length;
   const earned = p.badges || [];
+  const nivelBadge = p.nivel ? '<span class="badge ' + (p.nivel==='iniciante'?'badge-success':p.nivel==='intermediario'?'badge-warning':p.nivel==='avancado'?'badge-danger':p.nivel==='feminino'?'badge-accent':'badge-muted') + '">' + (p.nivel==='iniciante'?'🟢':p.nivel==='intermediario'?'🟡':p.nivel==='avancado'?'🔴':p.nivel==='feminino'?'🩷':'🟠') + ' ' + p.nivel + '</span>' : '';
+  const tipoBadge = p.tipo ? '<span class="badge ' + (p.tipo==='mensalista'?'badge-primary':'badge-muted') + '">' + (p.tipo==='mensalista'?'⭐ Mensalista — inscrições 24h antes':'🎫 Avulso — inscrições 12h antes') + '</span>' : '';
+  const arenaBtn = !p.arenaId ? '<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="joinArena()">🏟️ Entrar em uma arena</button>' : '';
   return `<div class="screen">
     <div class="profile-header">
       <div onclick="uploadProfilePhoto()" style="position:relative;cursor:pointer;display:inline-block">
-  ${renderAvatar(p,'avatar-xl')}
-  <div style="position:absolute;bottom:2px;right:2px;width:30px;height:30px;
-    background:var(--primary);border-radius:50%;display:flex;align-items:center;
-    justify-content:center;font-size:15px;border:2px solid var(--bg)">📷</div>
-</div>
+        ${renderAvatar(p,'avatar-xl')}
+        <div style="position:absolute;bottom:2px;right:2px;width:30px;height:30px;
+          background:var(--primary);border-radius:50%;display:flex;align-items:center;
+          justify-content:center;font-size:15px;border:2px solid var(--bg)">📷</div>
+      </div>
       <div class="t-h1">${p.name||'Aluno'}</div>
       <div class="t-sm t-muted">${p.email||''}</div>
-      ${!p.arenaId ? `<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="joinArena()">
-        🏟️ Entrar em uma arena
-      </button>` : ''}
+      ${arenaBtn}
       <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;flex-wrap:wrap">
-        ${p.nivel ? `<span class="badge ${p.nivel==='iniciante'?'badge-success':p.nivel==='intermediario'?'badge-warning':p.nivel==='avancado'?'badge-danger':p.nivel==='feminino'?'badge-accent':'badge-muted'}">${p.nivel==='iniciante'?'🟢':p.nivel==='intermediario'?'🟡':p.nivel==='avancado'?'🔴':p.nivel==='feminino'?'🩷':'🟠'} ${p.nivel}</span>` : ''}
-        ${p.tipo ? `<span class="badge ${p.tipo==='mensalista'?'badge-primary':'badge-muted'}">${p.tipo==='mensalista'?'⭐ Mensalista — inscrições 24h antes':'🎫 Avulso — inscrições 12h antes'}</span>` : ''}
+        ${nivelBadge}${tipoBadge}
       </div>
       <div class="profile-stats" style="margin-top:16px">
         <div class="profile-stat"><div class="profile-stat-val">${p.totalClasses||0}</div><div class="profile-stat-lbl">Total aulas</div></div>
@@ -1653,11 +1653,7 @@ function screenStudentProfile() {
     <div class="badge-grid" id="badge-grid">
       ${BADGES.map(b => {
         const isEarned = earned.includes(b.id);
-      return `<div class="badge-item ${isEarned?'earned':'locked'}" onclick="showBadgeDetail('${b.id}',${isEarned})"
-          title="${b.name}">
-          <span class="badge-emoji">${b.emoji}</span>
-          <span class="badge-name">${b.name}</span>
-        </div>`;
+        return '<div class="badge-item ' + (isEarned?'earned':'locked') + '" onclick="showBadgeDetail(\'' + b.id + '\',' + isEarned + ')" title="' + b.name + '"><span class="badge-emoji">' + b.emoji + '</span><span class="badge-name">' + b.name + '</span></div>';
       }).join('')}
     </div>
     <div class="settings-group" style="margin-top:16px">
