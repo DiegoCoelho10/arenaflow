@@ -22,7 +22,7 @@ async function ensureStudentDoc(arenaId, uid, profile) {
     totalClasses: 0, monthClasses: 0, streakWeeks: 0,
     badges: profile?.badges || ['first'],
     joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).catch(()=>{});
+  }).catch(e => console.warn('ensureStudentDoc:', e?.message));
 }
 
 // Janela de inscrição configurável por arena (defaults 24h/12h)
@@ -36,6 +36,20 @@ function getEnrollWindowHours(tipo) {
 // ── EQUIPE (multi-gestor) ────────────────────────────────────
 // Dono da arena = arena.gestorUid; funcionários entram pela
 // lista arena.staffEmails (Config → Equipe)
+
+// Aluno habilitado para a aula? Decidido pelo NÍVEL.
+// Aula sem nível ou "todos" = aberta para qualquer aluno.
+function nivelMatches(clsNivel, studentNivel) {
+  if (!clsNivel || clsNivel === 'todos') return true;
+  if (!studentNivel) return false;
+  if (studentNivel === 'intermediario_avancado') {
+    return ['intermediario','avancado','intermediario_avancado'].includes(clsNivel);
+  }
+  if (clsNivel === 'intermediario_avancado') {
+    return studentNivel === 'intermediario' || studentNivel === 'avancado';
+  }
+  return clsNivel === studentNivel;
+}
 
 function isArenaOwner() {
   return App.role === 'arena_admin'
@@ -293,7 +307,16 @@ const App = {
             const aSnap = await db.collection('arenas').doc(this.arenaId).get().catch(()=>null);
             this.arena = (aSnap && aSnap.exists) ? aSnap.data() : null;
             // Auto-reparo do vínculo (alunos antigos sem doc em /students)
-            ensureStudentDoc(this.arenaId, uid, this.profile);
+            await ensureStudentDoc(this.arenaId, uid, this.profile);
+            // Ficha do aluno (tipo/nível/status) é a fonte da verdade
+            const sdSnap = await db.collection('arenas').doc(this.arenaId)
+              .collection('students').doc(uid).get().catch(()=>null);
+            if (sdSnap && sdSnap.exists) {
+              const sd = sdSnap.data();
+              this.profile = { ...this.profile,
+                tipo: sd.tipo ?? null, nivel: sd.nivel ?? null,
+                status: sd.status || 'active' };
+            }
           }
           hideLoading();
           this.go(SCREENS.S_HOME);
@@ -1350,8 +1373,7 @@ function loadClassesForDay(dateStr) {
   const list = document.getElementById('classes-list');
   if (!list) return;
   list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
-  const studentSlots = App.profile?.slots || [];
- let q = db.collection('arenas').doc(App.arenaId).collection('classes')
+  let q = db.collection('arenas').doc(App.arenaId).collection('classes')
     .where('dateStr','==',dateStr);
   if (window._currentMod && window._currentMod !== 'all') {
     q = q.where('modality','==',window._currentMod);
@@ -1359,31 +1381,14 @@ function loadClassesForDay(dateStr) {
   q.get().then(snap => {
     if (!list) return;
     let docs = snap.docs.sort((a,b) => a.data().startTime.localeCompare(b.data().startTime));
-    // Filtrar pelo horário do aluno
-    // Filtrar pelo horário do aluno
-    if (studentSlots.length > 0) {
-      docs = docs.filter(d => studentSlots.includes(d.data().startTime));
-    }
-    // Filtrar pelo nível do aluno
+    // Habilitação por NÍVEL: o aluno vê as aulas do seu nível + "todos"
     const studentNivel = App.profile?.nivel;
-    if (studentNivel) {
-      docs = docs.filter(d => {
-        const clsNivel = d.data().nivel;
-        if (!clsNivel) return true;
-        if (studentNivel === 'intermediario_avancado') {
-          return clsNivel === 'intermediario' || clsNivel === 'avancado' || clsNivel === 'intermediario_avancado';
-        }
-        if (clsNivel === 'intermediario_avancado') {
-          return studentNivel === 'intermediario' || studentNivel === 'avancado';
-        }
-        return clsNivel === studentNivel;
-      });
-    }
+    docs = docs.filter(d => nivelMatches(d.data().nivel, studentNivel));
     if (docs.length === 0) {
-      const msg = studentSlots.length > 0
-        ? `<div class="empty-state"><div class="empty-emoji">⏰</div>
-            <div class="empty-title">Sem aulas no seu horário</div>
-            <div class="empty-text">Seus horários: ${studentSlots.join(' • ')}<br>Fale com o gestor para mais informações.</div></div>`
+      const msg = !studentNivel
+        ? `<div class="empty-state"><div class="empty-emoji">🎯</div>
+            <div class="empty-title">Aguardando seu nível</div>
+            <div class="empty-text">O gestor ainda vai definir seu nível — depois disso suas aulas aparecem aqui.</div></div>`
         : `<div class="empty-state"><div class="empty-emoji">🏖️</div>
             <div class="empty-title">Sem aulas neste dia</div></div>`;
       list.innerHTML = msg;
@@ -1476,12 +1481,15 @@ window.enrollClass = async function(clsId) {
     if (!clsSnap0.exists) throw new Error('Aula não encontrada');
     const cls0 = clsSnap0.data();
 
-    // Horário autorizado
-    const slots = student.slots || [];
-    if (slots.length > 0 && !slots.includes(cls0.startTime)) {
+    // Habilitação por nível
+    if (!nivelMatches(cls0.nivel, student.nivel)) {
       hideLoading();
-      showModal({ icon:'⛔', iconBg:'var(--danger-dim)', title:'Horário não autorizado',
-        text:`Você está matriculado apenas no(s) horário(s): ${slots.join(', ')}. Fale com o gestor.`,
+      const nomes = {iniciante:'Iniciante', intermediario:'Intermediário', avancado:'Avançado',
+        intermediario_avancado:'Intermediário/Avançado', feminino:'Feminino'};
+      showModal({ icon:'🎯', iconBg:'var(--danger-dim)', title:'Aula de outro nível',
+        text: student.nivel
+          ? `Esta turma é ${nomes[cls0.nivel]||cls0.nivel}. Seu nível é ${nomes[student.nivel]||student.nivel}. Fale com o gestor se acha que deveria participar.`
+          : 'O gestor ainda não definiu seu nível. Fale com ele para liberar suas aulas.',
         actions:[{label:'Entendi', style:'btn-outline', close:true}] });
       return;
     }
@@ -2408,6 +2416,7 @@ function screenAdminCreate() {
      <div class="field">
         <label>Nível da turma</label>
         <select class="input" id="cls-nivel">
+          <option value="todos">🌍 Todos os níveis</option>
           <option value="iniciante">🟢 Iniciante</option>
           <option value="intermediario">🟡 Intermediário</option>
           <option value="avancado">🔴 Avançado</option>
@@ -2589,10 +2598,32 @@ function screenAdminStudentDetail() {
 function liveAdminStudentDetail() {
   const uid = App.params?.uid;
   if (!uid || !App.arenaId) return;
-  db.collection('arenas').doc(App.arenaId).collection('students').doc(uid).get().then(snap => {
+  const sRef = db.collection('arenas').doc(App.arenaId).collection('students').doc(uid);
+  sRef.get().then(async snap => {
     const body = document.getElementById('student-detail-body');
     if (!body) return;
-    if (!snap.exists) { body.innerHTML = `<div class="empty-state"><div class="empty-emoji">❓</div><div class="empty-title">Aluno não encontrado</div></div>`; return; }
+    if (!snap.exists) {
+      // Auto-reparo: aluno existe em users mas não em /students — cria agora
+      try {
+        const uSnap = await db.collection('users').doc(uid).get();
+        if (uSnap.exists && uSnap.data().arenaId === App.arenaId) {
+          const u = uSnap.data();
+          await sRef.set({
+            name: u.name || '', email: u.email || '',
+            photoBase64: u.photoBase64 || null,
+            status: 'active', tipo: null, nivel: null, slots: [],
+            totalClasses: 0, monthClasses: 0, streakWeeks: 0,
+            badges: u.badges || ['first'],
+            joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          snap = await sRef.get();
+        }
+      } catch(e) { console.warn('auto-reparo aluno falhou:', e?.message); }
+      if (!snap.exists) {
+        body.innerHTML = `<div class="empty-state"><div class="empty-emoji">❓</div><div class="empty-title">Aluno não encontrado</div></div>`;
+        return;
+      }
+    }
     const s = snap.data();
     const earned = s.badges || [];
     const statusMap = {active:'badge-success',inactive:'badge-warning',blocked:'badge-danger'};
@@ -2632,27 +2663,16 @@ function liveAdminStudentDetail() {
         </div>
       </div>
       <div class="section-header" style="margin-top:8px">
-        <span class="section-title">⏰ Horários autorizados</span>
+        <span class="section-title">📅 Aulas habilitadas</span>
       </div>
       <div style="padding:0 20px 16px">
-        <div style="background:var(--surface);border-radius:var(--r-md);overflow:hidden;
-          border:1px solid var(--border);margin-bottom:12px">
-          ${(s.slots||[]).length ? (s.slots||[]).map(slot =>
-            `<div class="flex items-center gap-10" style="padding:12px 16px;border-bottom:1px solid var(--border)">
-              <span style="font-size:20px">⏰</span>
-              <span class="t-h3 flex-1">${slot}</span>
-              <button class="btn btn-danger btn-sm" onclick="removeStudentSlot('${uid}','${slot}')">Remover</button>
-            </div>`
-          ).join('') : `<div class="t-sm t-muted" style="padding:16px;text-align:center">
-            ⚠️ Nenhum horário configurado — aluno não vê aulas ainda
-          </div>`}
-        </div>
-        <div class="flex gap-8">
-          <input class="input flex-1" id="new-slot-input" type="time" placeholder="19:00">
-          <button class="btn btn-primary" onclick="addStudentSlot('${uid}')">+ Adicionar</button>
+        <div class="t-sm t-muted" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px">
+          ${s.nivel
+            ? `O aluno vê e participa das aulas do nível dele e das turmas "🌍 Todos os níveis".`
+            : `⚠️ <b>Defina o nível acima</b> — sem nível, o aluno só vê as turmas "🌍 Todos os níveis".`}
         </div>
       </div>
-      <div style="padding:0 20px">
+      <div style="padding:0 20px 110px">
         <div class="flex gap-10" style="margin-bottom:16px">
           ${s.status!=='blocked'
             ? `<button class="btn btn-danger flex-1" onclick="blockStudent('${uid}')">⛔ Bloquear</button>`
@@ -3144,9 +3164,8 @@ function screenSAArenaDetail() {
 function liveAdminStudents() {
   if (App.screen === SCREENS.A_STUDENTS) {
     if (!App.arenaId) return;
-    const unsub = db.collection('users')
-      .where('arenaId','==',App.arenaId)
-      .where('role','==','student')
+    const unsub = db.collection('arenas').doc(App.arenaId)
+      .collection('students')
       .onSnapshot(snap => {
         window._allStudents = snap.docs.map(d=>({id:d.id,...d.data()}));
         const active = window._allStudents.filter(s=>(s.status||'active')==='active');
