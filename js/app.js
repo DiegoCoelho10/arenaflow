@@ -33,6 +33,104 @@ function getEnrollWindowHours(tipo) {
     : (s.enrollAvulsoHours ?? 12);
 }
 
+// ── EQUIPE (multi-gestor) ────────────────────────────────────
+// Dono da arena = arena.gestorUid; funcionários entram pela
+// lista arena.staffEmails (Config → Equipe)
+
+function isArenaOwner() {
+  return App.role === 'arena_admin'
+    && App.arena?.gestorUid === App.user?.uid;
+}
+
+async function findStaffInvite(email) {
+  if (!email) return null;
+  const snap = await db.collection('arenas')
+    .where('staffEmails', 'array-contains', email.toLowerCase())
+    .limit(1).get().catch(()=>null);
+  if (!snap || snap.empty) return null;
+  return { id: snap.docs[0].id, ...snap.docs[0].data() };
+}
+
+function offerStaffInvite(arena, uid) {
+  showModal({
+    icon:'🤝', iconBg:'var(--primary-dim)',
+    title:'Convite de equipe!',
+    text:`Você foi convidado para a equipe da ${arena.name}. Como funcionário, você poderá criar aulas e gerenciar alunos e filas.`,
+    actions:[
+      {label:'Agora não', style:'btn-outline', id:'staff-decline', close:true},
+      {label:'Aceitar e entrar', style:'btn-primary', id:'staff-accept', close:true}
+    ]
+  });
+  window._modalCallbacks['staff-accept'] = async () => {
+    showLoading();
+    try {
+      await db.collection('users').doc(uid).set({
+        role: 'arena_admin',
+        arenaId: arena.id,
+        adminLevel: 'staff',
+        email: (App.user.email||'').toLowerCase()
+      }, { merge: true });
+      await App.loadUserProfile(uid);
+      showToast(`Bem-vindo à equipe da ${arena.name}! 🤝`,'success');
+    } catch(e) {
+      hideLoading();
+      showToast('Erro ao aceitar convite — fale com o dono da arena','error');
+      App.go(SCREENS.S_HOME);
+    }
+  };
+  window._modalCallbacks['staff-decline'] = () => {
+    App.arenaId = App.profile?.arenaId || null;
+    App.go(App.arenaId ? SCREENS.S_HOME : SCREENS.S_HOME);
+  };
+}
+
+window.addStaffEmail = async function() {
+  const inp = document.getElementById('staff-email');
+  const email = (inp?.value || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) { showToast('Digite um e-mail válido','error'); return; }
+  if ((App.arena?.gestorEmail||'').toLowerCase() === email) {
+    showToast('Esse é o e-mail do dono da arena','warning'); return;
+  }
+  showLoading();
+  try {
+    await db.collection('arenas').doc(App.arenaId).update({
+      staffEmails: firebase.firestore.FieldValue.arrayUnion(email)
+    });
+    App.arena.staffEmails = [...(App.arena.staffEmails||[]), email];
+    hideLoading();
+    showToast('Funcionário adicionado! Peça para ele entrar no app com esse e-mail.','success');
+    App.go(SCREENS.A_SETTINGS);
+  } catch(e) { hideLoading(); showToast('Erro ao adicionar','error'); }
+};
+
+window.removeStaffEmail = async function(email) {
+  confirmModal('Remover da equipe?', `${email} perderá o acesso de gestão imediatamente.`, '🚫', async () => {
+    showLoading();
+    try {
+      await db.collection('arenas').doc(App.arenaId).update({
+        staffEmails: firebase.firestore.FieldValue.arrayRemove(email)
+      });
+      App.arena.staffEmails = (App.arena.staffEmails||[]).filter(e => e !== email);
+      // Rebaixa o usuário se já tinha aceitado o convite
+      const uSnap = await db.collection('users')
+        .where('arenaId','==',App.arenaId)
+        .where('role','==','arena_admin').get().catch(()=>null);
+      if (uSnap) {
+        for (const d of uSnap.docs) {
+          if ((d.data().email||'').toLowerCase() === email && d.id !== App.arena.gestorUid) {
+            await db.collection('users').doc(d.id).update({
+              role: 'student', adminLevel: firebase.firestore.FieldValue.delete()
+            }).catch(()=>{});
+          }
+        }
+      }
+      hideLoading();
+      showToast('Removido da equipe','warning');
+      App.go(SCREENS.A_SETTINGS);
+    } catch(e) { hideLoading(); showToast('Erro ao remover','error'); }
+  });
+};
+
 // ── CONSTANTS ───────────────────────────────────────────────
 const SCREENS = {
   SPLASH:'splash', LOGIN:'login', REGISTER:'register', FORGOT:'forgot',
@@ -162,6 +260,13 @@ const App = {
           this.arenaId = this.profile.arenaId;
           const arenaSnap = await db.collection('arenas').doc(this.arenaId).get();
           this.arena = arenaSnap.data();
+          // Auto-claim: arena antiga sem dono registrado e o e-mail bate
+          if (this.arena && !this.arena.gestorUid
+              && (this.arena.gestorEmail||'').toLowerCase() === (this.user.email||'').toLowerCase()) {
+            await db.collection('arenas').doc(this.arenaId)
+              .update({ gestorUid: uid }).catch(()=>{});
+            this.arena.gestorUid = uid;
+          }
           if (this.arena?.status === 'suspended') {
             hideLoading();
             this.go(SCREENS.LOGIN);
@@ -176,6 +281,13 @@ const App = {
           hideLoading();
           this.go(SCREENS.A_HOME);
         } else {
+          // Convite de equipe pendente? (dono adicionou este e-mail)
+          const staffArena = await findStaffInvite(this.user.email);
+          if (staffArena) {
+            hideLoading();
+            offerStaffInvite(staffArena, uid);
+            return;
+          }
           this.arenaId = this.profile.arenaId;
           if (this.arenaId) {
             const aSnap = await db.collection('arenas').doc(this.arenaId).get().catch(()=>null);
@@ -970,7 +1082,7 @@ function attachInvite() {
         return;
       }
       await db.collection('users').doc(uid).set({
-        email, role: 'arena_admin', arenaId,
+        email, role: 'arena_admin', arenaId, adminLevel: 'owner',
         name: arena.gestorName || email.split('@')[0],
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
@@ -2705,6 +2817,25 @@ function screenAdminSettings() {
         <button class="btn btn-success btn-sm" onclick="navigator.clipboard.writeText('${a.studentCode||''}').then(()=>showToast('Código copiado!','success'))">Copiar</button>
       </div>
     </div>
+    ${ (a.gestorUid && App.user && a.gestorUid === App.user.uid) ? `
+    <div class="settings-group">
+      <div class="settings-label">👥 Equipe</div>
+      <div style="padding:0 20px 12px">
+        <div class="t-sm t-muted" style="margin-bottom:12px">
+          Funcionários podem criar aulas e gerenciar alunos e filas.
+          Adicione pelo e-mail — a pessoa entra no app com ele e aceita o convite.
+        </div>
+        ${(a.staffEmails||[]).map(em => `
+          <div class="flex items-center gap-8" style="margin-bottom:8px;background:var(--surface-2);border-radius:10px;padding:10px 12px">
+            <span class="flex-1 t-sm">${em}</span>
+            <button class="btn btn-outline btn-sm" onclick="removeStaffEmail('${em}')">Remover</button>
+          </div>`).join('') || '<div class="t-sm t-dim" style="margin-bottom:8px">Nenhum funcionário ainda</div>'}
+        <div class="flex gap-8" style="margin-top:8px">
+          <input class="input flex-1" id="staff-email" type="email" placeholder="email@funcionario.com">
+          <button class="btn btn-primary" onclick="addStaffEmail()">Adicionar</button>
+        </div>
+      </div>
+    </div>` : ''}
     <div class="settings-group">
       <div class="settings-label">WhatsApp</div>
       <div style="padding:0 20px 12px">
@@ -3051,6 +3182,22 @@ function liveAdminStudents() {
               <div><div class="t-label t-dim">Alunos</div><div class="t-h3" style="margin-top:4px">${a.studentCount||0}</div></div>
             </div>
           </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="t-label t-dim" style="margin-bottom:10px">👤 Dono da arena</div>
+            <div class="t-h3">${a.gestorName||'—'}</div>
+            <div class="t-sm t-muted">${a.gestorEmail||'—'}${a.gestorPhone?` • ${a.gestorPhone}`:''}</div>
+            <div class="flex items-center gap-8" style="margin-top:10px">
+              <span class="badge ${a.gestorUid?'badge-success':'badge-warning'}">${a.gestorUid?'✅ Convite resgatado':'⏳ Aguardando resgate'}</span>
+              ${!a.gestorUid ? `<span class="t-sm t-dim">Código: <b>${a.inviteCode||'—'}</b></span>` : ''}
+            </div>
+            <div class="flex gap-8" style="margin-top:14px">
+              <button class="btn btn-outline btn-sm flex-1" onclick="changeArenaGestor('${snap.id}')">✏️ Trocar dono</button>
+              ${!a.gestorUid ? `<button class="btn btn-outline btn-sm flex-1" onclick="regenArenaInvite('${snap.id}')">🔄 Novo código</button>` : ''}
+            </div>
+            ${(a.staffEmails||[]).length ? `<div class="t-sm t-dim" style="margin-top:12px">Equipe: ${(a.staffEmails||[]).join(', ')}</div>` : ''}
+          </div>
+
           <div class="flex gap-10">
             ${a.status==='active' ? `<button class="btn btn-danger flex-1" onclick="setArenaStatus('${snap.id}','suspended')">⛔ Suspender</button>` : ''}
             ${a.status==='suspended' ? `<button class="btn btn-success flex-1" onclick="setArenaStatus('${snap.id}','active')">✅ Reativar</button>` : ''}
@@ -3082,6 +3229,76 @@ window.setArenaStatus = async function(arenaId, status) {
       } catch(e) { hideLoading(); showToast('Erro','error'); }
     }
   );
+};
+
+window.changeArenaGestor = async function(arenaId) {
+  const snap = await db.collection('arenas').doc(arenaId).get();
+  if (!snap.exists) return;
+  const a = snap.data();
+  showModal({
+    icon:'✏️', iconBg:'var(--primary-dim)',
+    title:'Trocar dono da arena',
+    html:`<div style="margin-top:16px;text-align:left">
+      <div class="field"><label>Nome do novo dono</label>
+        <input class="input" id="ng-name" value=""></div>
+      <div class="field" style="margin-top:10px"><label>E-mail (o que ele usará para logar)</label>
+        <input class="input" id="ng-email" type="email" value=""></div>
+      <div class="field" style="margin-top:10px"><label>Telefone</label>
+        <input class="input" id="ng-phone" value=""></div>
+      <div class="t-sm t-dim" style="margin-top:12px">⚠️ O dono atual (${a.gestorName||a.gestorEmail||'—'}) perde o acesso de gestão. Um novo código de convite será gerado.</div>
+    </div>`,
+    actions:[
+      {label:'Cancelar', style:'btn-outline', close:true},
+      {label:'Trocar dono', style:'btn-primary', id:'save-gestor', close:true}
+    ]
+  });
+  window._modalCallbacks['save-gestor'] = async () => {
+    const name  = document.getElementById('ng-name')?.value.trim();
+    const email = document.getElementById('ng-email')?.value.trim().toLowerCase();
+    const phone = document.getElementById('ng-phone')?.value.trim();
+    if (!name || !email || !email.includes('@')) { showToast('Preencha nome e e-mail válidos','error'); return; }
+    showLoading();
+    try {
+      const newCode = generateInviteCode();
+      const oldUid = a.gestorUid || null;
+      await db.collection('arenas').doc(arenaId).update({
+        gestorName: name, gestorEmail: email, gestorPhone: phone || null,
+        gestorUid: null, inviteCode: newCode
+      });
+      // Rebaixa o dono antigo (se já tinha resgatado o convite)
+      if (oldUid) {
+        await db.collection('users').doc(oldUid).update({
+          role: 'student', arenaId: null,
+          adminLevel: firebase.firestore.FieldValue.delete()
+        }).catch(()=>{});
+      }
+      hideLoading();
+      showModal({
+        icon:'🔑', iconBg:'var(--success-dim)',
+        title:'Dono alterado!',
+        text:`Envie para ${name} (${email}): acesse o app → "Tenho um convite de gestor" → código ${newCode}`,
+        actions:[{label:'Copiar código', style:'btn-primary', id:'copy-gcode', close:true},
+                 {label:'Fechar', style:'btn-outline', close:true}]
+      });
+      window._modalCallbacks['copy-gcode'] = () => {
+        navigator.clipboard?.writeText(newCode).then(()=>showToast('Código copiado!','success'));
+      };
+      App.go(SCREENS.SA_ARENA, {arenaId});
+    } catch(e) { hideLoading(); showToast('Erro ao trocar dono','error'); }
+  };
+};
+
+window.regenArenaInvite = async function(arenaId) {
+  confirmModal('Gerar novo código?','O código de convite atual deixa de funcionar.','🔄', async () => {
+    showLoading();
+    try {
+      const newCode = generateInviteCode();
+      await db.collection('arenas').doc(arenaId).update({ inviteCode: newCode });
+      hideLoading();
+      showToast(`Novo código: ${newCode}`,'success');
+      App.go(SCREENS.SA_ARENA, {arenaId});
+    } catch(e) { hideLoading(); showToast('Erro','error'); }
+  });
 };
 
 window.editArenaPlan = function(arenaId, currentValue) {
