@@ -5,6 +5,34 @@
 
 'use strict';
 
+// ── Helpers Fase 1 (plano gratuito: lógica em transações + Rules) ──
+
+// Auto-reparo: garante o doc do aluno em arenas/{id}/students/{uid}
+// (corrige alunos antigos sem precisar de script de backfill)
+async function ensureStudentDoc(arenaId, uid, profile) {
+  const ref = db.collection('arenas').doc(arenaId).collection('students').doc(uid);
+  const snap = await ref.get().catch(()=>null);
+  if (snap && snap.exists) return;
+  await ref.set({
+    name: profile?.name || '',
+    email: profile?.email || '',
+    photoBase64: profile?.photoBase64 || null,
+    status: 'active',
+    tipo: null, nivel: null, slots: [],
+    totalClasses: 0, monthClasses: 0, streakWeeks: 0,
+    badges: profile?.badges || ['first'],
+    joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(()=>{});
+}
+
+// Janela de inscrição configurável por arena (defaults 24h/12h)
+function getEnrollWindowHours(tipo) {
+  const s = App.arena?.settings || {};
+  return (tipo === 'mensalista')
+    ? (s.enrollMensalistaHours ?? 24)
+    : (s.enrollAvulsoHours ?? 12);
+}
+
 // ── CONSTANTS ───────────────────────────────────────────────
 const SCREENS = {
   SPLASH:'splash', LOGIN:'login', REGISTER:'register', FORGOT:'forgot',
@@ -149,6 +177,12 @@ const App = {
           this.go(SCREENS.A_HOME);
         } else {
           this.arenaId = this.profile.arenaId;
+          if (this.arenaId) {
+            const aSnap = await db.collection('arenas').doc(this.arenaId).get().catch(()=>null);
+            this.arena = (aSnap && aSnap.exists) ? aSnap.data() : null;
+            // Auto-reparo do vínculo (alunos antigos sem doc em /students)
+            ensureStudentDoc(this.arenaId, uid, this.profile);
+          }
           hideLoading();
           this.go(SCREENS.S_HOME);
         }
@@ -801,26 +835,30 @@ async function submitRegister() {
     const cred = await auth.createUserWithEmailAndPassword(regData.email, regData.password);
     await cred.user.updateProfile({ displayName: regData.name });
     const arenaCode = document.getElementById('reg-arena-code')?.value.trim().toUpperCase();
-    let arenaId = null;
-    if (arenaCode) {
-      const arenaSnap = await db.collection('arenas')
-        .where('studentCode','==',arenaCode).limit(1).get();
-      if (!arenaSnap.empty) {
-        arenaId = arenaSnap.docs[0].id;
-      } else {
-        showToast('Código da arena inválido — cadastro feito sem arena','warning');
-      }
-    }
     await db.collection('users').doc(cred.user.uid).set({
       name: regData.name, email: regData.email,
       age: regData.age, sex: regData.sex,
-      role: 'student', arenaId,
+      role: 'student', arenaId: null,
       totalClasses: 0, monthClasses: 0,
       streak: 0, streakWeeks: 0,
       badges: ['first'], reactions: 0, referrals: 0,
       waitlistWent: 0, fastConfirms: 0,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+    // Vincula à arena: users.arenaId + doc em /students (Rules validam)
+    if (arenaCode) {
+      const arenaSnap = await db.collection('arenas')
+        .where('studentCode','==',arenaCode).limit(1).get().catch(()=>null);
+      if (arenaSnap && !arenaSnap.empty) {
+        const arenaId = arenaSnap.docs[0].id;
+        await db.collection('users').doc(cred.user.uid).update({ arenaId }).catch(()=>{});
+        await ensureStudentDoc(arenaId, cred.user.uid, {
+          name: regData.name, email: regData.email, badges:['first']
+        });
+      } else {
+        showToast('Código da arena inválido — cadastro feito sem arena','warning');
+      }
+    }
     hideLoading();
     confetti();
     showModal({
@@ -910,6 +948,12 @@ function attachInvite() {
       const arenaDoc = arenaSnap.docs[0];
       const arenaId  = arenaDoc.id;
       const arena    = arenaDoc.data();
+      // Trava 1: só o e-mail cadastrado pelo responsável resgata o convite
+      if ((arena.gestorEmail || '').toLowerCase() !== email.toLowerCase()) {
+        hideLoading();
+        showToast('Este convite pertence a outro e-mail. Fale com o suporte ArenaFlow.','error');
+        return;
+      }
       let userCred;
       try {
         userCred = await auth.signInWithEmailAndPassword(email, pwd);
@@ -919,11 +963,20 @@ function attachInvite() {
         } else { throw e; }
       }
       const uid = userCred.user.uid;
+      // Trava 2: uso único — primeiro resgate grava gestorUid (Rules validam)
+      if (arena.gestorUid && arena.gestorUid !== uid) {
+        hideLoading();
+        showToast('Este convite já foi utilizado.','error');
+        return;
+      }
       await db.collection('users').doc(uid).set({
         email, role: 'arena_admin', arenaId,
         name: arena.gestorName || email.split('@')[0],
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
+      if (!arena.gestorUid) {
+        await db.collection('arenas').doc(arenaId).update({ gestorUid: uid }).catch(()=>{});
+      }
       hideLoading();
       confetti();
       showModal({
@@ -1248,7 +1301,7 @@ function renderClassCards(docs, container) {
       if (!isPast) {
         if (!status || status === 'cancelled') {
           const tipo = App.profile?.tipo || 'avulso';
-          const minHours = tipo === 'mensalista' ? 24 : 12;
+          const minHours = getEnrollWindowHours(tipo);
           const clsDateTime = new Date(`${cls.dateStr}T${cls.startTime}`);
           const hoursUntil = (clsDateTime - new Date()) / (1000 * 60 * 60);
           if (hoursUntil > minHours) {
@@ -1289,85 +1342,109 @@ function renderClassCards(docs, container) {
 
 window.enrollClass = async function(clsId) {
   if (!App.user || !App.arenaId) return;
-   // Verificar horário autorizado
-  const studentSlots = App.profile?.slots || [];
-  if (studentSlots.length > 0) {
-    const clsCheck = await db.collection('arenas').doc(App.arenaId)
-      .collection('classes').doc(clsId).get();
-    const clsData = clsCheck.data();
-    if (clsData && !studentSlots.includes(clsData.startTime)) {
-      showModal({
-        icon:'⛔', iconBg:'var(--danger-dim)',
-        title:'Horário não autorizado',
-        text:`Você está matriculado apenas no(s) horário(s): ${studentSlots.join(', ')}. Fale com o gestor para alterar sua turma.`,
-        actions:[{label:'Entendi', style:'btn-outline', close:true}]
-      });
-      return;
-    }
-  }
-   // Verificar tempo de antecedência por tipo de aluno
-  const clsSnapTime = await db.collection('arenas').doc(App.arenaId)
-    .collection('classes').doc(clsId).get();
-  const clsDataTime = clsSnapTime.data();
-  if (clsDataTime) {
-    const now = new Date();
-    const clsDate = new Date(`${clsDataTime.dateStr}T${clsDataTime.startTime}`);
-    const hoursUntil = (clsDate - now) / (1000 * 60 * 60);
-    const tipo = App.profile?.tipo || 'avulso';
-    const minHours = tipo === 'mensalista' ? 24 : 12;
-    if (hoursUntil > minHours) {
-      const hoursLeft = Math.floor(hoursUntil - minHours);
-      const minsLeft = Math.floor(((hoursUntil - minHours) % 1) * 60);
-      showModal({
-        icon: tipo === 'mensalista' ? '⭐' : '🎫',
-        iconBg: 'var(--warning-dim)',
-        title: 'Ainda não liberado',
-        text: `${tipo === 'mensalista' ? 'Mensalistas' : 'Avulsos'} podem se inscrever a partir de ${minHours}h antes da aula. Inscrições abrem em: ${hoursLeft}h ${minsLeft}min`,
-        actions:[{label:'Entendi', style:'btn-outline', close:true}]
-      });
-      return;
-    }
-  }
+  const uid = App.user.uid;
+  const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
+  const enrRef = clsRef.collection('enrollments').doc(uid);
+
   showLoading();
   try {
-    const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
-    const enrRef = clsRef.collection('enrollments').doc(App.user.uid);
-    const clsSnap = await clsRef.get();
-    const cls = clsSnap.data();
-    if (!cls) throw new Error('Aula não encontrada');
-    const spotsUsed = cls.spotsUsed || 0;
-    const maxSpots  = cls.maxSpots || 0;
-    const isWaitlist = spotsUsed >= maxSpots;
-    const waitPos = isWaitlist ? (cls.waitlist?.length || 0) + 1 : null;
-    await db.runTransaction(async t => {
-      const fresh = await t.get(clsRef);
-      const fd = fresh.data();
+    // Garante o vínculo (auto-reparo) e lê dados do aluno
+    await ensureStudentDoc(App.arenaId, uid, App.profile);
+    const stSnap = await db.collection('arenas').doc(App.arenaId)
+      .collection('students').doc(uid).get();
+    const student = stSnap.exists ? stSnap.data() : {};
+    if (student.status === 'blocked') {
+      hideLoading();
+      showModal({ icon:'⛔', iconBg:'var(--danger-dim)', title:'Acesso bloqueado',
+        text:'Fale com o gestor da arena.', actions:[{label:'OK', style:'btn-outline', close:true}] });
+      return;
+    }
+
+    const clsSnap0 = await clsRef.get();
+    if (!clsSnap0.exists) throw new Error('Aula não encontrada');
+    const cls0 = clsSnap0.data();
+
+    // Horário autorizado
+    const slots = student.slots || [];
+    if (slots.length > 0 && !slots.includes(cls0.startTime)) {
+      hideLoading();
+      showModal({ icon:'⛔', iconBg:'var(--danger-dim)', title:'Horário não autorizado',
+        text:`Você está matriculado apenas no(s) horário(s): ${slots.join(', ')}. Fale com o gestor.`,
+        actions:[{label:'Entendi', style:'btn-outline', close:true}] });
+      return;
+    }
+
+    // Janela por tipo (também imposta pelas Security Rules no servidor)
+    const tipo = student.tipo || 'avulso';
+    const minHours = getEnrollWindowHours(tipo);
+    const startsAt = new Date(`${cls0.dateStr}T${cls0.startTime}`);
+    const hoursUntil = (startsAt - new Date()) / 3600000;
+    if (hoursUntil <= 0) {
+      hideLoading();
+      showToast('Esta aula já começou','warning');
+      return;
+    }
+    if (hoursUntil > minHours) {
+      const mins = Math.ceil((hoursUntil - minHours) * 60);
+      hideLoading();
+      showModal({
+        icon: tipo === 'mensalista' ? '⭐' : '🎫', iconBg:'var(--warning-dim)',
+        title:'Ainda não liberado',
+        text:`${tipo === 'mensalista' ? 'Mensalistas' : 'Avulsos'} podem se inscrever a partir de ${minHours}h antes da aula. Abre em ${Math.floor(mins/60)}h ${mins%60}min.`,
+        actions:[{label:'Entendi', style:'btn-outline', close:true}]
+      });
+      return;
+    }
+
+    const result = await db.runTransaction(async t => {
+      const [fSnap, eSnap] = await Promise.all([t.get(clsRef), t.get(enrRef)]);
+      const fd = fSnap.data();
       if (!fd) throw new Error('Aula removida');
-      const fUsed = fd.spotsUsed || 0;
-      const fMax  = fd.maxSpots || 0;
-      const fWaitlist = fd.waitlist || [];
-      if (fUsed < fMax) {
-        t.set(enrRef, {
-          studentId: App.user.uid, studentName: App.profile?.name || '',
-          status: 'invited', enrolledAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        t.update(clsRef, { spotsUsed: fUsed + 1 });
-      } else {
-        const wPos = fWaitlist.length + 1;
-        t.set(enrRef, {
-          studentId: App.user.uid, studentName: App.profile?.name || '',
-          status: 'waitlist', waitlistPosition: wPos,
-          enrolledAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        t.update(clsRef, { waitlist: [...fWaitlist, App.user.uid] });
+
+      // Sem duplicidade (toque duplo, console etc.)
+      if (eSnap.exists) {
+        const st = eSnap.data().status;
+        if (st === 'invited' || st === 'confirmed') throw new Error('Você já está inscrito nesta aula');
+        if (st === 'waitlist') throw new Error(`Você já está na fila (posição #${eSnap.data().waitlistPosition||'?'})`);
+        // cancelled → pode reinscrever
       }
+
+      const waitlist = fd.waitlist || [];
+      const used = fd.spotsUsed || 0;
+      const max  = fd.maxSpots || 0;
+      const base = {
+        studentId: uid,
+        studentName: App.profile?.name || '',
+        enrolledAt: firebase.firestore.FieldValue.serverTimestamp(),
+        // denormalização: conserta a tela "Minhas Aulas"
+        modality: fd.modality || 'Futevôlei',
+        dateStr: fd.dateStr || null,
+        startTime: fd.startTime || null,
+        endTime: fd.endTime || null,
+        court: fd.court || null,
+        startTimestamp: fd.startTimestamp || null
+      };
+
+      // FILA JUSTA: vaga direta só se há vaga E ninguém esperando
+      if (used < max && waitlist.length === 0) {
+        t.set(enrRef, { ...base, status:'invited',
+          waitlistPosition: firebase.firestore.FieldValue.delete() }, { merge:true });
+        t.update(clsRef, { spotsUsed: used + 1 });
+        return { status:'enrolled' };
+      }
+      if (waitlist.includes(uid)) throw new Error('Você já está na fila desta aula');
+      const pos = waitlist.length + 1;
+      t.set(enrRef, { ...base, status:'waitlist', waitlistPosition: pos }, { merge:true });
+      t.update(clsRef, { waitlist: [...waitlist, uid] });
+      return { status:'waitlist', position: pos };
     });
+
     hideLoading();
-    if (isWaitlist) {
+    if (result.status === 'waitlist') {
       showModal({
         icon:'⏳', iconBg:'var(--accent-dim)',
         title:'Você entrou na fila!',
-        text:`Você está na posição #${waitPos} da fila de espera. Avisaremos se uma vaga abrir! 🤙`,
+        text:`Você está na posição #${result.position} da fila de espera. Se uma vaga abrir, você assume automaticamente! 🤙`,
         actions:[{label:'Entendido', style:'btn-accent', close:true}]
       });
     } else {
@@ -1375,14 +1452,18 @@ window.enrollClass = async function(clsId) {
       showModal({
         icon:'✅', iconBg:'var(--success-dim)',
         title:'Inscrição realizada!',
-        text:'Você está inscrito! Fique atento ao WhatsApp — enviaremos a confirmação em breve.',
+        text:'Você está inscrito! Fique atento — enviaremos a confirmação em breve.',
         actions:[{label:'Ótimo!', style:'btn-success', close:true}]
       });
     }
     loadClassesForDay(window._currentDay);
   } catch(e) {
     hideLoading();
-    showToast('Erro ao se inscrever', 'error');
+    const msg = (e && e.message && !/permission|insufficient/i.test(e.message))
+      ? e.message
+      : 'Inscrição não permitida — verifique a janela de inscrição do seu tipo de aluno.';
+    showToast(msg, 'error');
+    loadClassesForDay(window._currentDay);
   }
 };
 
@@ -1442,45 +1523,80 @@ function loadMyClasses(type) {
         </div>
         ${(enr.status==='invited'||enr.status==='confirmed') ? `
         <div class="flex gap-8" style="margin-top:12px">
-          <button class="btn btn-outline btn-sm flex-1" onclick="cancelEnrollment('${clsId}','${d.id}')">Cancelar</button>
+          <button class="btn btn-outline btn-sm flex-1" onclick="cancelEnrollment('${clsId}','${d.id}',false)">Cancelar</button>
+        </div>` : enr.status==='waitlist' ? `
+        <div class="flex gap-8" style="margin-top:12px">
+          <button class="btn btn-outline btn-sm flex-1" onclick="cancelEnrollment('${clsId}','${d.id}',true)">Sair da fila (#${enr.waitlistPosition||'?'})</button>
         </div>` : ''}
       </div>`;
     }).join('') || `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Sem aulas</div></div>`;
   });
 }
 
-window.cancelEnrollment = async function(clsId, docId) {
-  confirmModal('Cancelar inscrição?','Sua vaga será liberada para a fila de espera.','❌', async () => {
+window.cancelEnrollment = async function(clsId, docId, isWaitlist) {
+  const title = isWaitlist ? 'Sair da fila?' : 'Cancelar inscrição?';
+  const text  = isWaitlist
+    ? 'Você sairá da fila de espera desta aula.'
+    : 'Se houver fila de espera, o próximo aluno assume sua vaga automaticamente.';
+  confirmModal(title, text, '❌', async () => {
     showLoading();
     try {
-      const arenaId = App.arenaId;
       const uid = App.user.uid;
-      const clsRef = db.collection('arenas').doc(arenaId).collection('classes').doc(clsId);
+      const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
       const enrRef = clsRef.collection('enrollments').doc(uid);
+
       await db.runTransaction(async t => {
-        const clsSnap = await t.get(clsRef);
+        const [clsSnap, enrSnap] = await Promise.all([t.get(clsRef), t.get(enrRef)]);
         const cls = clsSnap.data();
-        t.update(enrRef, { status: 'cancelled' });
-        if (cls.spotsUsed > 0) t.update(clsRef, { spotsUsed: cls.spotsUsed - 1 });
+        if (!cls || !enrSnap.exists) throw new Error('Inscrição não encontrada');
+        const status = enrSnap.data().status;
+        const waitlist = cls.waitlist || [];
+
+        if (status === 'waitlist') {
+          // Sai da fila e reposiciona quem ficou
+          const newWait = waitlist.filter(x => x !== uid);
+          t.update(enrRef, { status:'cancelled',
+            cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
+            waitlistPosition: firebase.firestore.FieldValue.delete() });
+          t.update(clsRef, { waitlist: newWait });
+          newWait.forEach((wUid, i) =>
+            t.update(clsRef.collection('enrollments').doc(wUid), { waitlistPosition: i + 1 }));
+          return;
+        }
+
+        if (status === 'invited' || status === 'confirmed') {
+          t.update(enrRef, { status:'cancelled',
+            cancelledAt: firebase.firestore.FieldValue.serverTimestamp() });
+
+          if (waitlist.length > 0) {
+            // PROMOÇÃO AUTOMÁTICA: 1º da fila herda a vaga
+            const nextUid = waitlist[0];
+            const newWait = waitlist.slice(1);
+            t.update(clsRef.collection('enrollments').doc(nextUid), {
+              status:'invited',
+              waitlistPosition: firebase.firestore.FieldValue.delete(),
+              promotedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            t.update(clsRef, { waitlist: newWait }); // vaga transferida: spotsUsed não muda
+            newWait.forEach((wUid, i) =>
+              t.update(clsRef.collection('enrollments').doc(wUid), { waitlistPosition: i + 1 }));
+          } else {
+            t.update(clsRef, { spotsUsed: Math.max(0, (cls.spotsUsed||0) - 1) });
+          }
+          return;
+        }
+        throw new Error('Inscrição já cancelada');
       });
-      // Notify next in waitlist via Cloud Function
-      await notifyNextWaitlist(arenaId, clsId);
+
       hideLoading();
-      showToast('Inscrição cancelada', 'warning');
+      showToast(isWaitlist ? 'Você saiu da fila' : 'Inscrição cancelada', 'warning');
       loadMyClasses('upcoming');
     } catch(e) {
       hideLoading();
-      showToast('Erro ao cancelar', 'error');
+      showToast(e?.message || 'Erro ao cancelar', 'error');
     }
   });
 };
-
-async function notifyNextWaitlist(arenaId, clsId) {
-  try {
-    const fn = firebase.functions();
-    await fn.httpsCallable('notifyWaitlist')({ arenaId, clsId });
-  } catch(e) { /* Cloud function not configured yet */ }
-}
 
 // ═══════════════════════════════════════════════════════════
 //  STUDENT — RANKING
@@ -1620,7 +1736,7 @@ function screenStudentProfile() {
   const totalBadges = BADGES.length;
   const earned = p.badges || [];
   const nivelBadge = p.nivel ? '<span class="badge ' + (p.nivel==='iniciante'?'badge-success':p.nivel==='intermediario'?'badge-warning':p.nivel==='avancado'?'badge-danger':p.nivel==='feminino'?'badge-accent':'badge-muted') + '">' + (p.nivel==='iniciante'?'🟢':p.nivel==='intermediario'?'🟡':p.nivel==='avancado'?'🔴':p.nivel==='feminino'?'🩷':'🟠') + ' ' + p.nivel + '</span>' : '';
-  const tipoBadge = p.tipo ? '<span class="badge ' + (p.tipo==='mensalista'?'badge-primary':'badge-muted') + '">' + (p.tipo==='mensalista'?'⭐ Mensalista — inscrições 24h antes':'🎫 Avulso — inscrições 12h antes') + '</span>' : '';
+  const tipoBadge = p.tipo ? '<span class="badge ' + (p.tipo==='mensalista'?'badge-primary':'badge-muted') + '">' + (p.tipo==='mensalista'?'⭐ Mensalista — inscrições ' + getEnrollWindowHours('mensalista') + 'h antes':'🎫 Avulso — inscrições ' + getEnrollWindowHours('avulso') + 'h antes') + '</span>' : '';
   const arenaBtn = !p.arenaId ? '<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="joinArena()">🏟️ Entrar em uma arena</button>' : '';
   return `<div class="screen">
     <div class="profile-header">
@@ -1745,6 +1861,7 @@ window.showBadgeDetail = function(badgeId, isEarned) {
       const arenaId = snap.docs[0].id;
       const arena = snap.docs[0].data();
       await db.collection('users').doc(App.user.uid).update({ arenaId });
+      await ensureStudentDoc(arenaId, App.user.uid, App.profile);
       App.profile = { ...App.profile, arenaId };
       App.arenaId = arenaId;
       App.arena = arena;
@@ -2066,45 +2183,75 @@ window.promoteWaitlist = async function(clsId, studentDocId) {
   if (!App.arenaId) return;
   showLoading();
   try {
-    const ref = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId)
-      .collection('enrollments').doc(studentDocId);
-    await ref.update({ status: 'invited' });
     const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
+    const enrRef = clsRef.collection('enrollments').doc(studentDocId);
     await db.runTransaction(async t => {
-      const snap = await t.get(clsRef);
-      const cls = snap.data();
-      const newWaitlist = (cls.waitlist||[]).filter(x=>x!==studentDocId);
-      t.update(clsRef, { spotsUsed: (cls.spotsUsed||0)+1, waitlist: newWaitlist });
+      const [clsSnap, enrSnap] = await Promise.all([t.get(clsRef), t.get(enrRef)]);
+      const cls = clsSnap.data();
+      if (!cls || !enrSnap.exists) throw new Error('Aula ou inscrição não encontrada');
+      if (enrSnap.data().status !== 'waitlist') throw new Error('Este aluno não está na fila');
+      if ((cls.spotsUsed||0) >= (cls.maxSpots||0))
+        throw new Error('Aula lotada — aumente as vagas antes de promover');
+      const newWait = (cls.waitlist||[]).filter(x => x !== studentDocId);
+      t.update(enrRef, { status:'invited',
+        waitlistPosition: firebase.firestore.FieldValue.delete(),
+        promotedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      t.update(clsRef, { spotsUsed: (cls.spotsUsed||0) + 1, waitlist: newWait });
+      newWait.forEach((wUid, i) =>
+        t.update(clsRef.collection('enrollments').doc(wUid), { waitlistPosition: i + 1 }));
     });
     hideLoading();
-    showToast('Aluno promovido da fila!','success');
-    liveAdminClass();
+    showToast('Aluno promovido da fila! ✅','success');
   } catch(e) {
     hideLoading();
-    showToast('Erro','error');
+    showToast(e?.message || 'Erro ao promover','error');
   }
 };
 
 window.removeEnrollment = async function(clsId, studentDocId) {
   if (!App.arenaId) return;
-  confirmModal('Remover inscrição?','O aluno será removido desta aula.','❌', async () => {
+  confirmModal('Remover inscrição?','Se houver fila, o próximo aluno assume a vaga automaticamente.','❌', async () => {
     showLoading();
     try {
-      const ref = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId)
-        .collection('enrollments').doc(studentDocId);
-      await ref.update({ status: 'cancelled' });
       const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
+      const enrRef = clsRef.collection('enrollments').doc(studentDocId);
       await db.runTransaction(async t => {
-        const snap = await t.get(clsRef);
-        const cls = snap.data();
-        if (cls.spotsUsed > 0) t.update(clsRef, { spotsUsed: cls.spotsUsed - 1 });
+        const [clsSnap, enrSnap] = await Promise.all([t.get(clsRef), t.get(enrRef)]);
+        const cls = clsSnap.data();
+        if (!cls || !enrSnap.exists) throw new Error('Inscrição não encontrada');
+        const status = enrSnap.data().status;
+        const waitlist = cls.waitlist || [];
+
+        if (status === 'waitlist') {
+          const newWait = waitlist.filter(x => x !== studentDocId);
+          t.update(enrRef, { status:'cancelled',
+            waitlistPosition: firebase.firestore.FieldValue.delete() });
+          t.update(clsRef, { waitlist: newWait });
+          newWait.forEach((wUid, i) =>
+            t.update(clsRef.collection('enrollments').doc(wUid), { waitlistPosition: i + 1 }));
+          return;
+        }
+
+        t.update(enrRef, { status:'cancelled' });
+        if (waitlist.length > 0) {
+          const nextUid = waitlist[0];
+          const newWait = waitlist.slice(1);
+          t.update(clsRef.collection('enrollments').doc(nextUid), {
+            status:'invited',
+            waitlistPosition: firebase.firestore.FieldValue.delete(),
+            promotedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          t.update(clsRef, { waitlist: newWait });
+          newWait.forEach((wUid, i) =>
+            t.update(clsRef.collection('enrollments').doc(wUid), { waitlistPosition: i + 1 }));
+        } else if ((cls.spotsUsed||0) > 0) {
+          t.update(clsRef, { spotsUsed: cls.spotsUsed - 1 });
+        }
       });
       hideLoading();
       showToast('Inscrição removida','warning');
-      liveAdminClass();
     } catch(e) {
       hideLoading();
-      showToast('Erro','error');
+      showToast(e?.message || 'Erro ao remover','error');
     }
   });
 };
@@ -2561,17 +2708,16 @@ function screenAdminSettings() {
     <div class="settings-group">
       <div class="settings-label">WhatsApp</div>
       <div style="padding:0 20px 12px">
-        <div class="wa-status ${a.whatsappToken ? 'connected':'disconnected'}" style="margin-bottom:12px">
-          <span>${a.whatsappToken ? '✅':'❌'}</span>
-          ${a.whatsappToken ? 'WhatsApp conectado' : 'WhatsApp não configurado'}
+        <div class="wa-status disconnected" id="wa-status" style="margin-bottom:12px">
+          <span>⌛</span> Verificando configuração...
         </div>
         <div class="field">
           <label>Token da API (Meta WhatsApp Cloud)</label>
-          <input class="input" id="wa-token" type="password" placeholder="EAAxxxx..." value="${a.whatsappToken||''}">
+          <input class="input" id="wa-token" type="password" placeholder="EAAxxxx...">
         </div>
         <div class="field" style="margin-top:12px">
           <label>Phone Number ID</label>
-          <input class="input" id="wa-phone-id" placeholder="1234567890" value="${a.whatsappPhoneId||''}">
+          <input class="input" id="wa-phone-id" placeholder="1234567890">
         </div>
         <button class="btn btn-primary btn-full" style="margin-top:12px" id="btn-save-wa">Salvar configuração WhatsApp</button>
         <p class="t-xs t-muted" style="margin-top:8px;text-align:center">
@@ -2601,6 +2747,18 @@ function screenAdminSettings() {
             <option value="2" ${s.waitlistResponseHours===2?'selected':''}>2 horas</option>
           </select>
         </div>
+        <div class="field" style="margin-top:12px">
+          <label>⭐ Mensalista: inscrição abre (horas antes da aula)</label>
+          <select class="input" id="enroll-mens-hours">
+            ${[6,12,24,48,72,168].map(h => `<option value="${h}" ${(s.enrollMensalistaHours??24)===h?'selected':''}>${h>=24?(h/24)+' dia'+(h>24?'s':''):h+' horas'} antes</option>`).join('')}
+          </select>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>🎫 Avulso: inscrição abre (horas antes da aula)</label>
+          <select class="input" id="enroll-av-hours">
+            ${[3,6,12,24,48].map(h => `<option value="${h}" ${(s.enrollAvulsoHours??12)===h?'selected':''}>${h>=24?(h/24)+' dia'+(h>24?'s':''):h+' horas'} antes</option>`).join('')}
+          </select>
+        </div>
         <button class="btn btn-outline btn-full" style="margin-top:12px" id="btn-save-settings">Salvar automações</button>
       </div>
     </div>
@@ -2616,28 +2774,51 @@ function screenAdminSettings() {
 }
 
 function attachAdminSettings() {
+  const waRef = db.collection('arenas').doc(App.arenaId).collection('private').doc('whatsapp');
+
+  // Config segura do WhatsApp (alunos não têm acesso a /private)
+  waRef.get().then(snap => {
+    const st = document.getElementById('wa-status');
+    const d = snap.exists ? snap.data() : null;
+    if (st) {
+      st.className = `wa-status ${d?.token ? 'connected' : 'disconnected'}`;
+      st.innerHTML = d?.token ? '<span>✅</span> WhatsApp conectado' : '<span>❌</span> WhatsApp não configurado';
+    }
+    const tk = document.getElementById('wa-token');
+    const ph = document.getElementById('wa-phone-id');
+    if (tk && d?.token) tk.value = d.token;
+    if (ph && d?.phoneId) ph.value = d.phoneId;
+  }).catch(()=>{});
+
   document.getElementById('btn-save-wa')?.addEventListener('click', async () => {
     const token = document.getElementById('wa-token')?.value.trim();
     const phoneId = document.getElementById('wa-phone-id')?.value.trim();
     if (!token || !phoneId) { showToast('Preencha token e Phone ID','error'); return; }
     showLoading();
     try {
-      await db.collection('arenas').doc(App.arenaId).update({ whatsappToken:token, whatsappPhoneId:phoneId });
-      App.arena = {...App.arena, whatsappToken:token, whatsappPhoneId:phoneId};
+      await waRef.set({ token, phoneId, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       hideLoading();
       showToast('WhatsApp salvo com sucesso! ✅','success');
+      App.go(SCREENS.A_SETTINGS);
     } catch(e) { hideLoading(); showToast('Erro ao salvar','error'); }
   });
 
   document.getElementById('btn-save-settings')?.addEventListener('click', async () => {
     const confH = parseFloat(document.getElementById('conf-hours')?.value);
     const waitH = parseFloat(document.getElementById('wait-hours')?.value);
+    const mensH = parseInt(document.getElementById('enroll-mens-hours')?.value);
+    const avH   = parseInt(document.getElementById('enroll-av-hours')?.value);
     showLoading();
     try {
       await db.collection('arenas').doc(App.arenaId).update({
         'settings.confirmationHours': confH,
-        'settings.waitlistResponseHours': waitH
+        'settings.waitlistResponseHours': waitH,
+        'settings.enrollMensalistaHours': mensH,
+        'settings.enrollAvulsoHours': avH
       });
+      App.arena = { ...App.arena,
+        settings: { ...(App.arena?.settings||{}), confirmationHours: confH,
+          waitlistResponseHours: waitH, enrollMensalistaHours: mensH, enrollAvulsoHours: avH } };
       hideLoading();
       showToast('Configurações salvas!','success');
     } catch(e) { hideLoading(); showToast('Erro ao salvar','error'); }
@@ -2993,7 +3174,9 @@ function attachSANewArena() {
         studentCount: 0, paymentStatus: 'pending',
         inviteCode,
         studentCode,
-        settings: { confirmationHours:3, waitlistResponseHours:1 },
+        gestorUid: null,
+        settings: { confirmationHours:3, waitlistResponseHours:1,
+                    enrollMensalistaHours:24, enrollAvulsoHours:12 },
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       hideLoading();
