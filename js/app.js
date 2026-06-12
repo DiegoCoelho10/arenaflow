@@ -2196,11 +2196,11 @@ function liveAdminHome() {
   // Today classes
   const unsub = db.collection('arenas').doc(aId).collection('classes')
     .where('dateStr','==',today).onSnapshot(snap => {
+      const cls = snap.docs.filter(d => d.data().status !== 'cancelled');
       const at = document.getElementById('adm-today');
-      if (at) at.textContent = snap.size;
+      if (at) at.textContent = cls.length;
 
       let totalSpots=0, totalUsed=0, totalWait=0;
-      const cls = snap.docs;
       cls.forEach(d => {
         const data = d.data();
         totalSpots += data.maxSpots||0;
@@ -2287,8 +2287,9 @@ function loadAdminDayClasses(dateStr) {
   list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
  db.collection('arenas').doc(App.arenaId).collection('classes')
     .where('dateStr','==',dateStr).get().then(snap => {
-      const sortedDocs = snap.docs.sort((a,b) => a.data().startTime.localeCompare(b.data().startTime));
-      if (snap.empty) {
+      const visiveis = snap.docs.filter(d => d.data().status !== 'cancelled');
+      const sortedDocs = visiveis.sort((a,b) => a.data().startTime.localeCompare(b.data().startTime));
+      if (!visiveis.length) {
         list.innerHTML = `<div class="empty-state" style="padding:32px 0"><div class="empty-emoji">📭</div><div class="empty-title">Sem aulas neste dia</div><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="App.go('${SCREENS.A_CREATE}')">＋ Criar aula</button></div>`;
         return;
       }
@@ -2340,10 +2341,101 @@ function liveAdminClass() {
       const cls = snap.data();
       const titleEl = document.getElementById('cls-title');
       if (titleEl) titleEl.textContent = `${cls.modality} • ${cls.startTime}`;
-      loadClassEnrollments(clsId, cls);
+      if (App.params?.mode === 'attendance' && cls.status !== 'done' && cls.status !== 'cancelled') {
+        renderAttendanceMode(clsId, cls);
+      } else {
+        loadClassEnrollments(clsId, cls);
+      }
     });
   App.unsubscribers.push(unsub);
 }
+
+// ── CHAMADA DE PRESENÇA ──────────────────────────────────────
+function renderAttendanceMode(clsId, cls) {
+  const body = document.getElementById('cls-detail-body');
+  if (!body) return;
+  db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId)
+    .collection('enrollments').get().then(snap => {
+      const enrolled = snap.docs.filter(d =>
+        ['invited','confirmed','waiting'].includes(d.data().status));
+      if (!enrolled.length) {
+        body.innerHTML = `<div class="empty-state"><div class="empty-emoji">🤷</div>
+          <div class="empty-title">Ninguém inscrito</div>
+          <div class="empty-text">Sem inscritos para chamar presença.</div>
+          <button class="btn btn-outline btn-sm" style="margin-top:12px"
+            onclick="App.go('${SCREENS.A_CLASS}',{clsId:'${clsId}'})">← Voltar</button></div>`;
+        return;
+      }
+      // Todos começam presentes; toque alterna
+      window._attend = {};
+      enrolled.forEach(d => window._attend[d.id] = true);
+      body.innerHTML = `
+        <div style="padding:0 20px 130px">
+          <div class="card" style="margin-bottom:14px;text-align:center">
+            <div class="t-h3">✅ Chamada de presença</div>
+            <div class="t-sm t-muted" style="margin-top:4px">Toque no aluno que <b>faltou</b>. Ao encerrar, as presenças contam nas estatísticas.</div>
+          </div>
+          ${enrolled.map(d => {
+            const e = d.data();
+            return `<div class="attend-row" id="att-${d.id}" onclick="toggleAttendance('${d.id}')"
+              style="cursor:pointer;border:1px solid var(--success);border-radius:12px;margin-bottom:8px">
+              <div class="avatar avatar-sm">${getInitials(e.studentName||'?')}</div>
+              <div class="flex-1"><div class="t-h3">${e.studentName||'—'}</div></div>
+              <span id="att-ico-${d.id}" style="font-size:22px">✅</span>
+            </div>`;
+          }).join('')}
+          <button class="btn btn-success btn-full btn-lg" style="margin-top:14px"
+            onclick="finishAttendance('${clsId}')">🏁 Encerrar aula e salvar presenças</button>
+          <button class="btn btn-ghost btn-full" style="margin-top:8px"
+            onclick="App.go('${SCREENS.A_CLASS}',{clsId:'${clsId}'})">Cancelar chamada</button>
+        </div>`;
+    });
+}
+
+window.toggleAttendance = function(uid) {
+  window._attend[uid] = !window._attend[uid];
+  const row = document.getElementById('att-' + uid);
+  const ico = document.getElementById('att-ico-' + uid);
+  if (row) row.style.borderColor = window._attend[uid] ? 'var(--success)' : 'var(--danger)';
+  if (row) row.style.opacity = window._attend[uid] ? '1' : '0.6';
+  if (ico) ico.textContent = window._attend[uid] ? '✅' : '❌';
+};
+
+window.finishAttendance = async function(clsId) {
+  const presentes = Object.values(window._attend||{}).filter(Boolean).length;
+  const total = Object.keys(window._attend||{}).length;
+  confirmModal('Encerrar aula?',
+    `${presentes} de ${total} presentes. As presenças entram no Total e no Mês de cada aluno.`,
+    '🏁', async () => {
+    showLoading();
+    try {
+      const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
+      const batch = db.batch();
+      Object.entries(window._attend).forEach(([uid, presente]) => {
+        batch.update(clsRef.collection('enrollments').doc(uid),
+          { status: presente ? 'attended' : 'missed' });
+        if (presente) {
+          batch.update(
+            db.collection('arenas').doc(App.arenaId).collection('students').doc(uid),
+            { totalClasses: firebase.firestore.FieldValue.increment(1),
+              monthClasses: firebase.firestore.FieldValue.increment(1),
+              lastAttendanceAt: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+      });
+      batch.update(clsRef, { status: 'done',
+        attendedCount: presentes,
+        finishedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await batch.commit();
+      hideLoading();
+      confetti();
+      showToast(`Aula encerrada! ${presentes} presença(s) registrada(s) 🏐`,'success');
+      App.go(SCREENS.A_CLASS, { clsId });
+    } catch(e) {
+      hideLoading();
+      showToast(e?.message || 'Erro ao salvar presenças','error');
+    }
+  });
+};
 
 function loadClassEnrollments(clsId, cls) {
   const body = document.getElementById('cls-detail-body');
@@ -2366,10 +2458,16 @@ function loadClassEnrollments(clsId, cls) {
               <div class="spots-fill ${pct>=90?'low':pct>=60?'medium':'high'}" style="width:${Math.min(pct,100)}%"></div>
             </div>
           </div>
+          ${cls.status === 'done'
+            ? `<div class="card" style="border:1px solid var(--success);text-align:center">
+                <div class="t-h3" style="color:var(--success)">🏁 Aula encerrada</div>
+                <div class="t-sm t-muted" style="margin-top:4px">${cls.attendedCount ?? 0} presença(s) registrada(s)</div>
+              </div>`
+            : cls.status === 'cancelled' ? '' : `
           <div class="flex gap-8">
             <button class="btn btn-primary flex-1" onclick="openAttendanceMode('${clsId}')">✅ Chamar presença</button>
             <button class="btn btn-outline btn-sm" onclick="sendConfirmations('${clsId}')">📱 WhatsApp</button>
-          </div>
+          </div>`}
         </div>
         <div class="section-header"><span class="section-title">👥 Inscritos (${enrolled.length})</span></div>
         ${enrolled.length ? enrolled.map(d => {
@@ -2404,6 +2502,7 @@ function loadClassEnrollments(clsId, cls) {
               <div class="t-h3" style="color:var(--danger)">❌ Aula cancelada</div>
               <div class="t-sm t-muted" style="margin-top:4px">Os alunos inscritos foram notificados.</div>
             </div>`
+          : cls.status === 'done' ? '<div style="padding-bottom:110px"></div>'
           : `<div style="margin-top:16px;padding-bottom:110px">
               <button class="btn btn-outline flex-1" style="width:100%;color:var(--danger);border-color:var(--danger)"
                 onclick="adminCancelClass('${clsId}')">🗑️ Cancelar aula</button>
@@ -2635,6 +2734,32 @@ function screenAdminCreate() {
         <input class="input" id="cls-spots" type="number" value="6" min="1" max="50">
       </div>
       <div class="field">
+        <label>🔁 Repetir</label>
+        <select class="input" id="cls-repeat" onchange="document.getElementById('repeat-opts').style.display = this.value==='weekly' ? 'block' : 'none'">
+          <option value="none">Não repete (aula única)</option>
+          <option value="weekly">Toda semana, nos dias escolhidos</option>
+        </select>
+      </div>
+      <div id="repeat-opts" style="display:none">
+        <div class="field">
+          <label>Dias da semana</label>
+          <div class="flex gap-8" style="flex-wrap:wrap" id="wd-chips">
+            ${['D','S','T','Q','Q','S','S'].map((l,i) =>
+              `<div class="chip" data-wd="${i}" onclick="this.classList.toggle('active')"
+                style="min-width:42px;text-align:center;cursor:pointer">${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][i]}</div>`).join('')}
+          </div>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>Criar aulas para as próximas</label>
+          <select class="input" id="cls-rep-weeks">
+            <option value="4">4 semanas</option>
+            <option value="8">8 semanas</option>
+            <option value="12">12 semanas</option>
+          </select>
+        </div>
+        <div class="t-sm t-dim" style="margin-top:8px">A data acima é o ponto de partida. Ex.: Seg + Qua por 4 semanas = 8 aulas criadas de uma vez.</div>
+      </div>
+      <div class="field">
         <label>Convidar alunos</label>
         <select class="input" id="cls-invite">
           <option value="all">Todos os alunos ativos</option>
@@ -2659,34 +2784,54 @@ function attachAdminCreate() {
     const nivel    = document.getElementById('cls-nivel')?.value;
     if (!dateStr||!start||!end||!spots) { showToast('Preencha todos os campos','error'); return; }
     if (start >= end) { showToast('Horário de início deve ser antes do término','error'); return; }
+    // Datas da série: única, ou semanal nos dias marcados
+    const repeat = document.getElementById('cls-repeat')?.value || 'none';
+    let datas = [dateStr];
+    if (repeat === 'weekly') {
+      const dias = [...document.querySelectorAll('#wd-chips .chip.active')]
+        .map(el => parseInt(el.dataset.wd));
+      if (!dias.length) { showToast('Escolha os dias da semana','error'); return; }
+      const semanas = parseInt(document.getElementById('cls-rep-weeks')?.value || '4');
+      datas = [];
+      const inicio = new Date(`${dateStr}T12:00:00`);
+      for (let i = 0; i < semanas * 7; i++) {
+        const d = new Date(inicio);
+        d.setDate(inicio.getDate() + i);
+        if (dias.includes(d.getDay())) {
+          datas.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+        }
+      }
+      if (!datas.length) { showToast('Nenhuma data gerada — confira os dias','error'); return; }
+    }
+
     showLoading();
     try {
-      const dateObj = new Date(`${dateStr}T${start}`);
-      const clsRef = await db.collection('arenas').doc(App.arenaId).collection('classes').add({
-        modality, dateStr, startTime:start, endTime:end, court,
-        maxSpots: spots, spotsUsed: 0, waitlist: [],
-        status: 'open', invite, nivel,
-        startTimestamp: firebase.firestore.Timestamp.fromDate(dateObj),
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      const col = db.collection('arenas').doc(App.arenaId).collection('classes');
+      const batch = db.batch();
+      datas.forEach(ds => {
+        batch.set(col.doc(), {
+          modality, dateStr: ds, startTime:start, endTime:end, court,
+          maxSpots: spots, spotsUsed: 0, waitlist: [],
+          status: 'open', invite, nivel,
+          startTimestamp: firebase.firestore.Timestamp.fromDate(new Date(`${ds}T${start}`)),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
       });
-      if (invite === 'all') {
-        try {
-          const fn = firebase.functions();
-          await fn.httpsCallable('sendClassInvites')({arenaId:App.arenaId, clsId:clsRef.id});
-        } catch(e) { /* WhatsApp not configured */ }
-      }
+      await batch.commit();
       hideLoading();
       confetti();
       showModal({
         icon:'✅', iconBg:'var(--success-dim)',
-        title:'Aula criada!',
-        text: invite==='all' ? 'Aula criada e convites enviados via WhatsApp.' : 'Aula criada com sucesso!',
+        title: datas.length > 1 ? `${datas.length} aulas criadas!` : 'Aula criada!',
+        text: datas.length > 1
+          ? `Sua grade foi montada: ${datas.length} aulas de ${modality} criadas até ${datas[datas.length-1].split('-').reverse().join('/')}.`
+          : 'Aula criada com sucesso!',
         actions:[{label:'Ver agenda', style:'btn-primary', close:true}],
         onClose: () => App.go(SCREENS.A_SCHEDULE)
       });
     } catch(e) {
       hideLoading();
-      showToast('Erro ao criar aula','error');
+      showToast('Erro ao criar aula(s)','error');
     }
   });
 }
