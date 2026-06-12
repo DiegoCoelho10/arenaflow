@@ -72,7 +72,14 @@ function prevWeekKey() {
 // mês, exibe 0 (o valor real zera na próxima presença)
 function effMonthClasses(s) {
   if (!s) return 0;
-  return (s.monthKey === curMonthKey()) ? (s.monthClasses || 0) : 0;
+  if (s.monthKey === curMonthKey()) return s.monthClasses || 0;
+  // Fichas de versões antigas (sem monthKey): vale se a última
+  // presença foi neste mês
+  if (!s.monthKey && s.lastAttendanceAt?.toDate
+      && curMonthKey(s.lastAttendanceAt.toDate()) === curMonthKey()) {
+    return s.monthClasses || 0;
+  }
+  return 0;
 }
 // Emblemas automáticos (aulas e streak) que faltam conquistar
 function newlyEarnedBadges(totalClasses, streakWeeks, existing) {
@@ -1442,11 +1449,13 @@ function loadClassesForDay(dateStr) {
   if (window._currentMod && window._currentMod !== 'all') {
     q = q.where('modality','==',window._currentMod);
   }
-  q.get().then(snap => {
+  // Tempo real: aulas criadas/canceladas/encerradas refletem na hora
+  if (window._dayUnsub) { try { window._dayUnsub(); } catch(e){} }
+  window._dayUnsub = q.onSnapshot(snap => {
     if (!list) return;
     let docs = snap.docs.sort((a,b) => a.data().startTime.localeCompare(b.data().startTime));
-    // Aula cancelada some da agenda do aluno
-    docs = docs.filter(d => d.data().status !== 'cancelled');
+    // Cancelada e encerrada somem da agenda do aluno
+    docs = docs.filter(d => !['cancelled','done'].includes(d.data().status));
     // Habilitação por NÍVEL: o aluno vê as aulas do seu nível + "todos"
     const studentNivel = App.profile?.nivel;
     docs = docs.filter(d => nivelMatches(d.data().nivel, studentNivel));
@@ -1462,6 +1471,7 @@ function loadClassesForDay(dateStr) {
     }
     renderClassCards(docs, list);
   });
+  App.unsubscribers.push(window._dayUnsub);
 }
 
 function renderClassCards(docs, container) {
@@ -1587,6 +1597,7 @@ window.enrollClass = async function(clsId) {
       const fd = fSnap.data();
       if (!fd) throw new Error('Aula removida');
       if (fd.status === 'cancelled') throw new Error('Esta aula foi cancelada pela arena');
+      if (fd.status === 'done') throw new Error('Esta aula já foi encerrada');
 
       // Sem duplicidade (toque duplo, console etc.)
       if (eSnap.exists) {
@@ -1713,14 +1724,15 @@ function loadNotifications() {
 
 function refreshNotifBadge() {
   if (!App.user || !App.arenaId) return;
-  db.collection('arenas').doc(App.arenaId)
+  const unsub = db.collection('arenas').doc(App.arenaId)
     .collection('students').doc(App.user.uid).collection('notifications')
-    .where('read','==',false).get().then(snap => {
+    .where('read','==',false).onSnapshot(snap => {
       const b = document.getElementById('notif-badge');
       if (!b) return;
       if (snap.size > 0) { b.textContent = snap.size > 9 ? '9+' : snap.size; b.style.display = 'block'; }
       else b.style.display = 'none';
-    }).catch(()=>{});
+    }, ()=>{});
+  App.unsubscribers.push(unsub);
 }
 
 function screenStudentClasses() {
@@ -1751,7 +1763,9 @@ function loadMyClasses(type) {
   const uid = App.user.uid;
   const arenaId = App.arenaId;
   list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
-  db.collectionGroup('enrollments').where('studentId','==',uid).get().then(snap => {
+  if (window._myClsUnsub) { try { window._myClsUnsub(); } catch(e){} }
+  window._myClsUnsub = db.collectionGroup('enrollments')
+    .where('studentId','==',uid).onSnapshot(snap => {
     const now = new Date();
     const dtOf = (enr) => (enr.dateStr && enr.startTime)
       ? new Date(`${enr.dateStr}T${enr.startTime}`) : null;
@@ -1760,8 +1774,11 @@ function loadMyClasses(type) {
     // Cancelados (pelo aluno ou pela arena) saem das listas —
     // cancelamento pela arena aparece nas Notificações 🔔
     items = items.filter(d => !['cancelled','class_cancelled'].includes(d.data().status));
-    // Abas: Próximas = aula ainda não começou; Histórico = já passou
+    // Abas: presença lançada vai direto pro Histórico;
+    // o resto divide por já passou / ainda vai acontecer
     items = items.filter(d => {
+      const st = d.data().status;
+      if (st === 'attended' || st === 'missed') return type === 'past';
       const dt = dtOf(d.data());
       if (!dt) return type === 'upcoming';
       return type === 'past' ? dt < now : dt >= now;
@@ -1798,6 +1815,7 @@ function loadMyClasses(type) {
       </div>`;
     }).join('') || `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Sem aulas</div></div>`;
   });
+  App.unsubscribers.push(window._myClsUnsub);
 }
 
 window.cancelEnrollment = async function(clsId, docId, isWaitlist) {
@@ -2406,6 +2424,18 @@ function liveAdminClass() {
 function renderAttendanceMode(clsId, cls) {
   const body = document.getElementById('cls-detail-body');
   if (!body) return;
+  // Chamada abre 30 min antes do início da aula
+  const inicio = new Date(`${cls.dateStr}T${cls.startTime}`);
+  const liberaEm = new Date(inicio.getTime() - 30*60000);
+  if (new Date() < liberaEm) {
+    const f = (d) => d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    body.innerHTML = `<div class="empty-state"><div class="empty-emoji">⏳</div>
+      <div class="empty-title">Chamada ainda não liberada</div>
+      <div class="empty-text">A aula é ${f(inicio)}.<br>A chamada abre 30 min antes (${f(liberaEm)}).</div>
+      <button class="btn btn-outline btn-sm" style="margin-top:12px"
+        onclick="App.go('${SCREENS.A_CLASS}',{clsId:'${clsId}'})">← Voltar</button></div>`;
+    return;
+  }
   db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId)
     .collection('enrollments').get().then(snap => {
       const enrolled = snap.docs.filter(d =>
@@ -3104,14 +3134,16 @@ function liveAdminStudentDetail() {
         </div>
       </div>
       <div class="section-header"><span class="section-title">🏅 Emblemas (${earned.length})</span></div>
-      <div class="badge-grid">
-        ${BADGES.map(b => {
-          const isEarned = earned.includes(b.id);
-          return `<div class="badge-item ${isEarned?'earned':'locked'}">
-            <span class="badge-emoji">${b.emoji}</span>
-            <span class="badge-name">${b.name}</span>
-          </div>`;
-        }).join('')}
+      <div style="padding:0 20px 24px">
+        <div class="badge-grid" style="grid-template-columns:repeat(auto-fill,minmax(72px,1fr))">
+          ${BADGES.map(b => {
+            const isEarned = earned.includes(b.id);
+            return `<div class="badge-item ${isEarned?'earned':'locked'}">
+              <span class="badge-emoji">${b.emoji}</span>
+              <span class="badge-name">${b.name}</span>
+            </div>`;
+          }).join('')}
+        </div>
       </div>`;
   });
 }
