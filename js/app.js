@@ -51,6 +51,39 @@ function nivelMatches(clsNivel, studentNivel) {
   return clsNivel === studentNivel;
 }
 
+// ── GAMIFICAÇÃO: mês, semana, streak e emblemas ─────────────
+function curMonthKey(d) {
+  d = d || new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+// Chave da semana = segunda-feira daquela semana (local)
+function weekKeyOf(d) {
+  d = new Date(d || new Date());
+  const dow = (d.getDay() + 6) % 7; // seg=0 ... dom=6
+  d.setDate(d.getDate() - dow);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function prevWeekKey() {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
+  return weekKeyOf(d);
+}
+// "Aulas este mês" com reset preguiçoso: se a ficha é de outro
+// mês, exibe 0 (o valor real zera na próxima presença)
+function effMonthClasses(s) {
+  if (!s) return 0;
+  return (s.monthKey === curMonthKey()) ? (s.monthClasses || 0) : 0;
+}
+// Emblemas automáticos (aulas e streak) que faltam conquistar
+function newlyEarnedBadges(totalClasses, streakWeeks, existing) {
+  const have = existing || [];
+  return BADGES.filter(b =>
+    !have.includes(b.id) && (
+      (b.type === 'classes' && totalClasses >= b.req) ||
+      (b.type === 'streak_weeks' && streakWeeks >= b.req)
+    ));
+}
+
 function isArenaOwner() {
   return App.role === 'arena_admin'
     && App.arena?.gestorUid === App.user?.uid;
@@ -1245,14 +1278,23 @@ function liveStudentHome() {
   const uid = App.user.uid;
   const arenaId = App.arenaId;
 
-  // Live profile stats
-  const unsub1 = db.collection('users').doc(uid).onSnapshot(snap => {
+  // Live stats direto da ficha do aluno (fonte da verdade)
+  const unsub1 = db.collection('arenas').doc(arenaId)
+    .collection('students').doc(uid).onSnapshot(snap => {
     if (!snap.exists) return;
     const d = snap.data();
-    App.profile = d;
+    // Mescla SEM apagar nome/foto/tipo/nível já carregados
+    App.profile = { ...App.profile,
+      tipo: d.tipo ?? App.profile?.tipo ?? null,
+      nivel: d.nivel ?? App.profile?.nivel ?? null,
+      totalClasses: d.totalClasses || 0,
+      monthClasses: d.monthClasses || 0,
+      monthKey: d.monthKey || null,
+      streakWeeks: d.streakWeeks || 0,
+      badges: d.badges || App.profile?.badges || [] };
     const m = document.getElementById('st-month');
     const s = document.getElementById('st-streak');
-    if (m) m.textContent = d.monthClasses || 0;
+    if (m) m.textContent = effMonthClasses(d);
     if (s) s.textContent = `${d.streakWeeks || 0}🔥`;
 
     // Mini badges
@@ -1310,26 +1352,29 @@ function liveStudentHome() {
     });
   App.unsubscribers.push(unsub2);
 
-  // Mini ranking (top 3)
-  const month = new Date().toISOString().slice(0,7);
-  db.collection('arenas').doc(arenaId).collection('rankings').doc(month)
-    .collection('scores').orderBy('monthClasses','desc').limit(3).get().then(snap => {
+  // Mini ranking (top 3 do mês, direto das fichas)
+  db.collection('arenas').doc(arenaId).collection('students')
+    .orderBy('monthClasses','desc').limit(10).get().then(snap => {
       const mr = document.getElementById('mini-ranking');
       if (!mr) return;
-      if (snap.empty) { mr.innerHTML = `<div class="card t-muted t-center" style="padding:20px">Ranking ainda sem dados</div>`; return; }
+      const top = snap.docs
+        .map(d => ({ data: d.data(), val: effMonthClasses(d.data()) }))
+        .filter(x => x.val > 0)
+        .sort((a,b) => b.val - a.val)
+        .slice(0,3);
+      if (!top.length) { mr.innerHTML = `<div class="card t-muted t-center" style="padding:20px">Ranking ainda sem dados — participe das aulas! 🏐</div>`; return; }
       mr.innerHTML = `<div class="card" style="padding:0;overflow:hidden">${
-        snap.docs.map((d,i) => {
-          const data = d.data();
+        top.map((x,i) => {
           const medals = ['🥇','🥈','🥉'];
-          return `<div class="flex items-center gap-12" style="padding:12px 16px;border-bottom:1px solid var(--border);${i===2?'border:none':''}">
+          return `<div class="flex items-center gap-12" style="padding:12px 16px;border-bottom:1px solid var(--border);${i===top.length-1?'border:none':''}">
             <span style="font-size:20px">${medals[i]}</span>
-            <div class="avatar avatar-sm">${getInitials(data.name||'?')}</div>
-            <span class="t-h3 flex-1">${data.name||'—'}</span>
-            <span class="badge badge-primary">${data.monthClasses||0} aulas</span>
+            <div class="avatar avatar-sm">${getInitials(x.data.name||'?')}</div>
+            <span class="t-h3 flex-1">${x.data.name||'—'}</span>
+            <span class="badge badge-primary">${x.val} aula${x.val>1?'s':''}</span>
           </div>`;
         }).join('')
       }</div>`;
-    });
+    }).catch(()=>{});
 }
 
 function getClassStatus(cls) {
@@ -1865,33 +1910,40 @@ function loadRanking(type) {
         c.innerHTML = `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Ranking vazio</div><div class="empty-text">Participe de aulas para aparecer no ranking!</div></div>`;
         return;
       }
-      const docs = snap.docs;
-      const top3 = docs.slice(0,3);
-      const rest = docs.slice(3);
+      // Mês: corrige fichas de meses anteriores (valem 0) e reordena
+      let lista = snap.docs.map(d => ({ id: d.id, data: d.data(),
+        val: type === 'month' ? effMonthClasses(d.data()) : (d.data().totalClasses || 0) }));
+      lista = lista.filter(x => x.val > 0).sort((a,b) => b.val - a.val).slice(0,20);
+      if (!lista.length) {
+        c.innerHTML = `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Ranking vazio</div><div class="empty-text">Participe de aulas para aparecer no ranking!</div></div>`;
+        return;
+      }
+      const top3 = lista.slice(0,3);
+      const rest = lista.slice(3);
       const uid = App.user?.uid;
       c.innerHTML = `
         <div class="podium">
           ${top3.length >= 2 ? `<div class="podium-item podium-2">
-            <div>${renderAvatar(top3[1]?.data(),'avatar-md')}</div>
-            <div class="t-xs t-center" style="font-weight:600">${(top3[1]?.data().name||'').split(' ')[0]}</div>
+            <div>${renderAvatar(top3[1].data,'avatar-md')}</div>
+            <div class="t-xs t-center" style="font-weight:600">${(top3[1].data.name||'').split(' ')[0]}</div>
             <div class="podium-stand">2</div>
           </div>` : ''}
           ${top3.length >= 1 ? `<div class="podium-item podium-1">
             <div class="podium-crown">👑</div>
-            <div>${renderAvatar(top3[1]?.data(),'avatar-md')}</div>
-            <div class="t-sm t-center" style="font-weight:700">${(top3[0]?.data().name||'').split(' ')[0]}</div>
+            <div>${renderAvatar(top3[0].data,'avatar-md')}</div>
+            <div class="t-sm t-center" style="font-weight:700">${(top3[0].data.name||'').split(' ')[0]}</div>
             <div class="podium-stand">1</div>
           </div>` : ''}
           ${top3.length >= 3 ? `<div class="podium-item podium-3">
-            <div>${renderAvatar(top3[1]?.data(),'avatar-md')}</div>
-            <div class="t-xs t-center" style="font-weight:600">${(top3[2]?.data().name||'').split(' ')[0]}</div>
+            <div>${renderAvatar(top3[2].data,'avatar-md')}</div>
+            <div class="t-xs t-center" style="font-weight:600">${(top3[2].data.name||'').split(' ')[0]}</div>
             <div class="podium-stand">3</div>
           </div>` : ''}
         </div>
         <div style="margin-top:16px">
-          ${rest.map((d,i) => {
-            const data = d.data();
-            const isMe = d.id === uid;
+          ${rest.map((x,i) => {
+            const data = x.data;
+            const isMe = x.id === uid;
             return `<div class="rank-list-item">
               <span class="rank-num ${isMe ? 'me' : ''}">${i+4}</span>
               <div class="avatar avatar-sm ${isMe ? 'avatar-ring' : ''}">${getInitials(data.name||'?')}</div>
@@ -1899,7 +1951,7 @@ function loadRanking(type) {
                 <div class="t-h3">${data.name||'—'} ${isMe?'<span style="color:var(--primary)">(você)</span>':''}</div>
                 <div class="t-xs t-muted">${data.badges?.length||0} emblemas</div>
               </div>
-              <span class="badge badge-primary">${data[field]||0}</span>
+              <span class="badge badge-primary">${x.val}</span>
             </div>`;
           }).join('')}
         </div>`;
@@ -1981,7 +2033,7 @@ function screenStudentProfile() {
       </div>
       <div class="profile-stats" style="margin-top:16px">
         <div class="profile-stat"><div class="profile-stat-val">${p.totalClasses||0}</div><div class="profile-stat-lbl">Total aulas</div></div>
-        <div class="profile-stat"><div class="profile-stat-val">${p.monthClasses||0}</div><div class="profile-stat-lbl">Este mês</div></div>
+        <div class="profile-stat"><div class="profile-stat-val">${effMonthClasses(p)}</div><div class="profile-stat-lbl">Este mês</div></div>
         <div class="profile-stat"><div class="profile-stat-val">${p.streakWeeks||0}🔥</div><div class="profile-stat-lbl">Sequência</div></div>
       </div>
     </div>
@@ -2405,30 +2457,81 @@ window.finishAttendance = async function(clsId) {
   const presentes = Object.values(window._attend||{}).filter(Boolean).length;
   const total = Object.keys(window._attend||{}).length;
   confirmModal('Encerrar aula?',
-    `${presentes} de ${total} presentes. As presenças entram no Total e no Mês de cada aluno.`,
+    `${presentes} de ${total} presentes. As presenças contam no Total, no Mês, no streak e nos emblemas de cada aluno.`,
     '🏁', async () => {
     showLoading();
     try {
-      const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
+      const arenaRef = db.collection('arenas').doc(App.arenaId);
+      const clsRef = arenaRef.collection('classes').doc(clsId);
+      const mesAtual = curMonthKey();
+      const semanaAtual = weekKeyOf();
+      const semanaPassada = prevWeekKey();
+
+      // Lê a ficha de cada presente para calcular mês/streak/emblemas
+      const presentUids = Object.entries(window._attend)
+        .filter(([,p]) => p).map(([uid]) => uid);
+      const fichas = await Promise.all(presentUids.map(uid =>
+        arenaRef.collection('students').doc(uid).get()));
+
       const batch = db.batch();
+      const conquistas = []; // {uid, name, badges:[...]}
+
       Object.entries(window._attend).forEach(([uid, presente]) => {
         batch.update(clsRef.collection('enrollments').doc(uid),
           { status: presente ? 'attended' : 'missed' });
-        if (presente) {
-          batch.update(
-            db.collection('arenas').doc(App.arenaId).collection('students').doc(uid),
-            { totalClasses: firebase.firestore.FieldValue.increment(1),
-              monthClasses: firebase.firestore.FieldValue.increment(1),
-              lastAttendanceAt: firebase.firestore.FieldValue.serverTimestamp() });
-        }
       });
+
+      fichas.forEach(snap => {
+        if (!snap.exists) return;
+        const s = snap.data();
+        const novoTotal = (s.totalClasses || 0) + 1;
+        // Reset mensal preguiçoso: virou o mês → recomeça do 1
+        const novoMes = (s.monthKey === mesAtual) ? (s.monthClasses || 0) + 1 : 1;
+        // Streak semanal: mesma semana mantém; semana seguinte soma; buraco zera
+        let streak = s.streakWeeks || 0;
+        if (s.lastStreakWeek === semanaAtual) { /* já contou esta semana */ }
+        else if (s.lastStreakWeek === semanaPassada) streak += 1;
+        else streak = 1;
+
+        const novos = newlyEarnedBadges(novoTotal, streak, s.badges);
+        const upd = {
+          totalClasses: novoTotal,
+          monthClasses: novoMes, monthKey: mesAtual,
+          streakWeeks: streak, lastStreakWeek: semanaAtual,
+          lastAttendanceAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (novos.length) {
+          upd.badges = firebase.firestore.FieldValue.arrayUnion(...novos.map(b=>b.id));
+          conquistas.push({ uid: snap.id, name: s.name || 'Aluno', badges: novos });
+          // Notifica o aluno 🔔
+          batch.set(notifRef(App.arenaId, snap.id), notifData('badge',
+            novos.length > 1 ? `${novos.length} novos emblemas! 🏅` : `Novo emblema: ${novos[0].emoji} ${novos[0].name}!`,
+            novos.map(b => `${b.emoji} ${b.name} — ${b.desc}`).join(' • '),
+            clsId));
+        }
+        batch.update(arenaRef.collection('students').doc(snap.id), upd);
+      });
+
+      // Conquistas viram post no feed da comunidade
+      conquistas.forEach(c => {
+        batch.set(arenaRef.collection('feed').doc(), {
+          type: 'badge',
+          authorName: c.name,
+          text: `conquistou ${c.badges.map(b => `${b.emoji} ${b.name}`).join(', ')}!`,
+          reactions: {},
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+
       batch.update(clsRef, { status: 'done',
         attendedCount: presentes,
         finishedAt: firebase.firestore.FieldValue.serverTimestamp() });
       await batch.commit();
       hideLoading();
       confetti();
-      showToast(`Aula encerrada! ${presentes} presença(s) registrada(s) 🏐`,'success');
+      const badgeMsg = conquistas.length
+        ? ` 🏅 ${conquistas.length} aluno(s) conquistaram emblemas!` : '';
+      showToast(`Aula encerrada! ${presentes} presença(s).${badgeMsg}`,'success');
       App.go(SCREENS.A_CLASS, { clsId });
     } catch(e) {
       hideLoading();
@@ -2895,7 +2998,7 @@ function renderStudentList(students) {
       </div>
       <div class="flex items-center gap-8">
         <span class="dot ${statusDot}"></span>
-        <span class="t-xs t-muted">${s.monthClasses||0} este mês</span>
+        <span class="t-xs t-muted">${effMonthClasses(s)} este mês</span>
       </div>
     </div>`;
   }).join('');
@@ -2955,7 +3058,7 @@ function liveAdminStudentDetail() {
         <span class="badge ${statusMap[s.status||'active']}">${s.status==='active'?'Ativo':s.status==='blocked'?'Bloqueado':'Inativo'}</span>
         <div class="profile-stats" style="margin-top:16px">
           <div class="profile-stat"><div class="profile-stat-val">${s.totalClasses||0}</div><div class="profile-stat-lbl">Total</div></div>
-          <div class="profile-stat"><div class="profile-stat-val">${s.monthClasses||0}</div><div class="profile-stat-lbl">Mês</div></div>
+          <div class="profile-stat"><div class="profile-stat-val">${effMonthClasses(s)}</div><div class="profile-stat-lbl">Mês</div></div>
           <div class="profile-stat"><div class="profile-stat-val">${s.streakWeeks||0}🔥</div><div class="profile-stat-lbl">Streak</div></div>
         </div>
       </div>
