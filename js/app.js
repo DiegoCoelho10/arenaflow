@@ -149,7 +149,7 @@ window.removeStaffEmail = async function(email) {
 const SCREENS = {
   SPLASH:'splash', LOGIN:'login', REGISTER:'register', FORGOT:'forgot',
   INVITE:'invite',
-  S_HOME:'s-home', S_SCHEDULE:'s-schedule', S_CLASSES:'s-classes',
+  S_HOME:'s-home', S_SCHEDULE:'s-schedule', S_CLASSES:'s-classes', S_NOTIFS:'s-notifs',
   S_RANKING:'s-ranking', S_PROFILE:'s-profile',
   A_HOME:'a-home', A_SCHEDULE:'a-schedule', A_CLASS:'a-class',
   A_CREATE:'a-create', A_STUDENTS:'a-students', A_STUDENT:'a-student',
@@ -199,12 +199,25 @@ const BADGES = [
 
 const STATUS_LABELS = {
   confirmed:'Confirmado', waiting:'Aguardando', waitlist:'Fila de Espera',
-  invited:'Convidado', cancelled:'Cancelado', attended:'Participou'
+  invited:'Convidado', cancelled:'Cancelado', attended:'Participou',
+  class_cancelled:'Aula cancelada'
 };
 const STATUS_CSS = {
   confirmed:'status-confirmed', waiting:'status-waiting', waitlist:'status-waitlist',
-  invited:'status-invited', cancelled:'status-cancelled', attended:'status-attended'
+  invited:'status-invited', cancelled:'status-cancelled', attended:'status-attended',
+  class_cancelled:'status-cancelled'
 };
+
+// Ref de notificação in-app de um aluno (doc novo com id automático)
+function notifRef(arenaId, studentUid) {
+  return db.collection('arenas').doc(arenaId)
+    .collection('students').doc(studentUid)
+    .collection('notifications').doc();
+}
+function notifData(type, title, text, clsId) {
+  return { type, title, text, clsId: clsId || null, read: false,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+}
 
 // ── STATE ────────────────────────────────────────────────────
 const App = {
@@ -566,6 +579,7 @@ function renderScreen(screen, params) {
     [SCREENS.S_HOME]:    screenStudentHome,
     [SCREENS.S_SCHEDULE]:screenStudentSchedule,
     [SCREENS.S_CLASSES]: screenStudentClasses,
+    [SCREENS.S_NOTIFS]: screenStudentNotifs,
     [SCREENS.S_RANKING]: screenStudentRanking,
     [SCREENS.S_PROFILE]: screenStudentProfile,
     [SCREENS.A_HOME]:    screenAdminHome,
@@ -645,6 +659,7 @@ function attachListeners(screen) {
   if (screen === SCREENS.S_HOME)    liveStudentHome();
   if (screen === SCREENS.S_SCHEDULE)liveStudentSchedule();
   if (screen === SCREENS.S_CLASSES) liveStudentClasses();
+  if (screen === SCREENS.S_NOTIFS) loadNotifications();
   if (screen === SCREENS.S_RANKING) liveStudentRanking();
   if (screen === SCREENS.A_HOME)    liveAdminHome();
   if (screen === SCREENS.A_SCHEDULE)liveAdminSchedule();
@@ -1192,7 +1207,10 @@ function screenStudentHome() {
         <div class="home-greeting">
           <small>${greeting},</small>${firstName} 👋
         </div>
-        <div onclick="App.go('${SCREENS.S_PROFILE}')">${renderAvatar(p,'avatar-md')}</div>
+        <div class="flex items-center" style="gap:14px">
+          <div onclick="App.go('${SCREENS.S_NOTIFS}')" style="position:relative;font-size:24px;cursor:pointer;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-8px;background:var(--danger,#ff4d4d);color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 5px;min-width:16px;text-align:center"></span></div>
+          <div onclick="App.go('${SCREENS.S_PROFILE}')">${renderAvatar(p,'avatar-md')}</div>
+        </div>
       </div>
       <div class="grid-2" style="margin-top:16px" id="home-stats">
         <div class="stat-card primary"><div class="stat-value" id="st-month">—</div><div class="stat-label">Aulas este mês</div></div>
@@ -1222,6 +1240,7 @@ function screenStudentHome() {
 }
 
 function liveStudentHome() {
+  refreshNotifBadge();
   if (!App.user || !App.arenaId) return;
   const uid = App.user.uid;
   const arenaId = App.arenaId;
@@ -1381,6 +1400,8 @@ function loadClassesForDay(dateStr) {
   q.get().then(snap => {
     if (!list) return;
     let docs = snap.docs.sort((a,b) => a.data().startTime.localeCompare(b.data().startTime));
+    // Aula cancelada some da agenda do aluno
+    docs = docs.filter(d => d.data().status !== 'cancelled');
     // Habilitação por NÍVEL: o aluno vê as aulas do seu nível + "todos"
     const studentNivel = App.profile?.nivel;
     docs = docs.filter(d => nivelMatches(d.data().nivel, studentNivel));
@@ -1520,6 +1541,7 @@ window.enrollClass = async function(clsId) {
       const [fSnap, eSnap] = await Promise.all([t.get(clsRef), t.get(enrRef)]);
       const fd = fSnap.data();
       if (!fd) throw new Error('Aula removida');
+      if (fd.status === 'cancelled') throw new Error('Esta aula foi cancelada pela arena');
 
       // Sem duplicidade (toque duplo, console etc.)
       if (eSnap.exists) {
@@ -1590,6 +1612,72 @@ window.enrollClass = async function(clsId) {
 // ═══════════════════════════════════════════════════════════
 //  STUDENT — MY CLASSES
 // ═══════════════════════════════════════════════════════════
+function screenStudentNotifs() {
+  return `<div class="screen">
+    <div class="topbar">
+      <div class="topbar-back" onclick="App.go('${SCREENS.S_HOME}')">←</div>
+      <span class="topbar-title">🔔 Notificações</span>
+    </div>
+    <div id="notifs-list" style="padding:0 20px 100px;display:flex;flex-direction:column;gap:10px">
+      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+    </div>
+  </div>`;
+}
+
+function loadNotifications() {
+  const list = document.getElementById('notifs-list');
+  if (!list || !App.user || !App.arenaId) return;
+  const col = db.collection('arenas').doc(App.arenaId)
+    .collection('students').doc(App.user.uid).collection('notifications');
+  col.orderBy('createdAt','desc').limit(30).get().then(snap => {
+    if (snap.empty) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-emoji">🔕</div>
+        <div class="empty-title">Nada por aqui</div>
+        <div class="empty-text">Avisos sobre suas aulas e fila aparecem aqui.</div></div>`;
+      return;
+    }
+    const icons = { class_cancelled:'❌', promoted:'🎉', removed:'🚫', info:'📣' };
+    list.innerHTML = snap.docs.map(d => {
+      const n = d.data();
+      const when = n.createdAt?.toDate
+        ? n.createdAt.toDate().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+        : '';
+      return `<div class="card" style="${n.read?'opacity:.62':''}">
+        <div class="flex gap-10">
+          <span style="font-size:22px">${icons[n.type]||'📣'}</span>
+          <div class="flex-1">
+            <div class="t-h3">${n.title||''}</div>
+            <div class="t-sm t-muted" style="margin-top:2px">${n.text||''}</div>
+            <div class="t-sm t-dim" style="margin-top:6px">${when}</div>
+          </div>
+          ${!n.read ? '<span style="width:9px;height:9px;border-radius:50%;background:var(--primary);margin-top:6px"></span>' : ''}
+        </div>
+      </div>`;
+    }).join('');
+    // Marca como lidas
+    const unread = snap.docs.filter(d => !d.data().read);
+    if (unread.length) {
+      const batch = db.batch();
+      unread.forEach(d => batch.update(d.ref, { read: true }));
+      batch.commit().catch(()=>{});
+    }
+  }).catch(() => {
+    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">🔕</div><div class="empty-title">Nada por aqui</div></div>`;
+  });
+}
+
+function refreshNotifBadge() {
+  if (!App.user || !App.arenaId) return;
+  db.collection('arenas').doc(App.arenaId)
+    .collection('students').doc(App.user.uid).collection('notifications')
+    .where('read','==',false).get().then(snap => {
+      const b = document.getElementById('notif-badge');
+      if (!b) return;
+      if (snap.size > 0) { b.textContent = snap.size > 9 ? '9+' : snap.size; b.style.display = 'block'; }
+      else b.style.display = 'none';
+    }).catch(()=>{});
+}
+
 function screenStudentClasses() {
   return `<div class="screen">
     <div class="topbar"><span class="topbar-title">📋 Minhas Aulas</span></div>
@@ -1618,16 +1706,30 @@ function loadMyClasses(type) {
   const uid = App.user.uid;
   const arenaId = App.arenaId;
   list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
-  const now = firebase.firestore.Timestamp.now();
   db.collectionGroup('enrollments').where('studentId','==',uid).get().then(snap => {
-    if (snap.empty) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Sem aulas</div><div class="empty-text">Inscreva-se em uma aula na aba Horários!</div></div>`;
-      return;
-    }
-    // Filter by arena and type
-    const items = snap.docs.filter(d => d.ref.path.includes(arenaId));
+    const now = new Date();
+    const dtOf = (enr) => (enr.dateStr && enr.startTime)
+      ? new Date(`${enr.dateStr}T${enr.startTime}`) : null;
+
+    let items = snap.docs.filter(d => d.ref.path.includes(arenaId));
+    // Cancelados (pelo aluno ou pela arena) saem das listas —
+    // cancelamento pela arena aparece nas Notificações 🔔
+    items = items.filter(d => !['cancelled','class_cancelled'].includes(d.data().status));
+    // Abas: Próximas = aula ainda não começou; Histórico = já passou
+    items = items.filter(d => {
+      const dt = dtOf(d.data());
+      if (!dt) return type === 'upcoming';
+      return type === 'past' ? dt < now : dt >= now;
+    });
+    // Ordena: próximas em ordem crescente, histórico do mais recente
+    items.sort((a,b) => {
+      const da = dtOf(a.data()) || 0, db_ = dtOf(b.data()) || 0;
+      return type === 'past' ? db_ - da : da - db_;
+    });
     if (!items.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Sem aulas</div></div>`;
+      list.innerHTML = type === 'past'
+        ? `<div class="empty-state"><div class="empty-emoji">📜</div><div class="empty-title">Sem histórico ainda</div></div>`
+        : `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Sem aulas marcadas</div><div class="empty-text">Inscreva-se em uma aula na aba Horários!</div></div>`;
       return;
     }
     list.innerHTML = items.map(d => {
@@ -1641,10 +1743,10 @@ function loadMyClasses(type) {
           </div>
           <span class="status-pill ${STATUS_CSS[enr.status]||''}">${STATUS_LABELS[enr.status]||enr.status}</span>
         </div>
-        ${(enr.status==='invited'||enr.status==='confirmed') ? `
+        ${(type!=='past' && (enr.status==='invited'||enr.status==='confirmed')) ? `
         <div class="flex gap-8" style="margin-top:12px">
           <button class="btn btn-outline btn-sm flex-1" onclick="cancelEnrollment('${clsId}','${d.id}',false)">Cancelar</button>
-        </div>` : enr.status==='waitlist' ? `
+        </div>` : (type!=='past' && enr.status==='waitlist') ? `
         <div class="flex gap-8" style="margin-top:12px">
           <button class="btn btn-outline btn-sm flex-1" onclick="cancelEnrollment('${clsId}','${d.id}',true)">Sair da fila (#${enr.waitlistPosition||'?'})</button>
         </div>` : ''}
@@ -1692,6 +1794,7 @@ window.cancelEnrollment = async function(clsId, docId, isWaitlist) {
             // PROMOÇÃO AUTOMÁTICA: 1º da fila herda a vaga
             const nextUid = waitlist[0];
             const newWait = waitlist.slice(1);
+            const enr0 = enrSnap.data();
             t.update(clsRef.collection('enrollments').doc(nextUid), {
               status:'invited',
               waitlistPosition: firebase.firestore.FieldValue.delete(),
@@ -1700,6 +1803,10 @@ window.cancelEnrollment = async function(clsId, docId, isWaitlist) {
             t.update(clsRef, { waitlist: newWait }); // vaga transferida: spotsUsed não muda
             newWait.forEach((wUid, i) =>
               t.update(clsRef.collection('enrollments').doc(wUid), { waitlistPosition: i + 1 }));
+            t.set(notifRef(App.arenaId, nextUid), notifData('promoted',
+              'Você saiu da fila! 🎉',
+              `Uma vaga abriu e ela é sua: ${enr0.modality||'aula'} de ${enr0.dateStr||''} às ${enr0.startTime||''}.`,
+              clsId));
           } else {
             t.update(clsRef, { spotsUsed: Math.max(0, (cls.spotsUsed||0) - 1) });
           }
@@ -2291,9 +2398,64 @@ function loadClassEnrollments(clsId, cls) {
               <button class="btn btn-success btn-sm" onclick="promoteWaitlist('${clsId}','${d.id}')">Chamar</button>
             </div>`;
           }).join('')}
-        ` : ''}`;
+        ` : ''}
+        ${cls.status === 'cancelled'
+          ? `<div class="card" style="margin-top:16px;border:1px solid var(--danger);text-align:center">
+              <div class="t-h3" style="color:var(--danger)">❌ Aula cancelada</div>
+              <div class="t-sm t-muted" style="margin-top:4px">Os alunos inscritos foram notificados.</div>
+            </div>`
+          : `<div style="margin-top:16px;padding-bottom:110px">
+              <button class="btn btn-outline flex-1" style="width:100%;color:var(--danger);border-color:var(--danger)"
+                onclick="adminCancelClass('${clsId}')">🗑️ Cancelar aula</button>
+            </div>`}`;
     });
 }
+
+// Gestor cancela a aula: some da agenda dos alunos e cada
+// inscrito/fila recebe notificação 🔔. Aula sem nenhuma
+// movimentação é excluída de vez.
+window.adminCancelClass = async function(clsId) {
+  if (!App.arenaId) return;
+  confirmModal('Cancelar esta aula?',
+    'Ela sai da agenda dos alunos e todos os inscritos e a fila serão notificados.',
+    '🗑️', async () => {
+    showLoading();
+    try {
+      const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
+      const [clsSnap, enrSnap] = await Promise.all([
+        clsRef.get(),
+        clsRef.collection('enrollments').get()
+      ]);
+      if (!clsSnap.exists) throw new Error('Aula não encontrada');
+      const cls = clsSnap.data();
+      const ativos = enrSnap.docs.filter(d =>
+        ['invited','confirmed','waiting','waitlist'].includes(d.data().status));
+
+      if (enrSnap.empty) {
+        // Nunca teve movimentação: pode excluir de verdade
+        await clsRef.delete();
+      } else {
+        const batch = db.batch();
+        batch.update(clsRef, { status: 'cancelled',
+          cancelledAt: firebase.firestore.FieldValue.serverTimestamp() });
+        ativos.forEach(d => {
+          batch.update(d.ref, { status: 'class_cancelled' });
+          batch.set(notifRef(App.arenaId, d.id), notifData('class_cancelled',
+            'Aula cancelada ❌',
+            `A ${cls.modality||'aula'} de ${cls.dateStr||''} às ${cls.startTime||''} foi cancelada pela arena.`,
+            clsId));
+        });
+        await batch.commit();
+      }
+      hideLoading();
+      showToast('Aula cancelada','warning');
+      App.go(SCREENS.A_SCHEDULE);
+    } catch(e) {
+      hideLoading();
+      showToast(e?.message || 'Erro ao cancelar aula','error');
+    }
+  });
+};
 
 window.openAttendanceMode = function(clsId) {
   App.go(SCREENS.A_CLASS, {clsId, mode:'attendance'});
@@ -2313,12 +2475,17 @@ window.promoteWaitlist = async function(clsId, studentDocId) {
       if ((cls.spotsUsed||0) >= (cls.maxSpots||0))
         throw new Error('Aula lotada — aumente as vagas antes de promover');
       const newWait = (cls.waitlist||[]).filter(x => x !== studentDocId);
+      const enr0 = enrSnap.data();
       t.update(enrRef, { status:'invited',
         waitlistPosition: firebase.firestore.FieldValue.delete(),
         promotedAt: firebase.firestore.FieldValue.serverTimestamp() });
       t.update(clsRef, { spotsUsed: (cls.spotsUsed||0) + 1, waitlist: newWait });
       newWait.forEach((wUid, i) =>
         t.update(clsRef.collection('enrollments').doc(wUid), { waitlistPosition: i + 1 }));
+      t.set(notifRef(App.arenaId, studentDocId), notifData('promoted',
+        'Você saiu da fila! 🎉',
+        `O gestor confirmou sua vaga: ${enr0.modality||'aula'} de ${enr0.dateStr||''} às ${enr0.startTime||''}.`,
+        clsId));
     });
     hideLoading();
     showToast('Aluno promovido da fila! ✅','success');
@@ -2352,7 +2519,12 @@ window.removeEnrollment = async function(clsId, studentDocId) {
           return;
         }
 
+        const enr0 = enrSnap.data();
         t.update(enrRef, { status:'cancelled' });
+        t.set(notifRef(App.arenaId, studentDocId), notifData('removed',
+          'Inscrição removida',
+          `O gestor removeu sua inscrição na ${enr0.modality||'aula'} de ${enr0.dateStr||''} às ${enr0.startTime||''}.`,
+          clsId));
         if (waitlist.length > 0) {
           const nextUid = waitlist[0];
           const newWait = waitlist.slice(1);
@@ -2363,6 +2535,10 @@ window.removeEnrollment = async function(clsId, studentDocId) {
           t.update(clsRef, { waitlist: newWait });
           newWait.forEach((wUid, i) =>
             t.update(clsRef.collection('enrollments').doc(wUid), { waitlistPosition: i + 1 }));
+          t.set(notifRef(App.arenaId, nextUid), notifData('promoted',
+            'Você saiu da fila! 🎉',
+            `Uma vaga abriu e ela é sua: ${enr0.modality||'aula'} de ${enr0.dateStr||''} às ${enr0.startTime||''}.`,
+            clsId));
         } else if ((cls.spotsUsed||0) > 0) {
           t.update(clsRef, { spotsUsed: cls.spotsUsed - 1 });
         }
