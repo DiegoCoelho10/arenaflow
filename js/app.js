@@ -1323,23 +1323,34 @@ function liveStudentHome() {
     .where('status','in',['open','confirmed'])
     .orderBy('startTimestamp')
     .startAt(now)
-    .limit(1)
-    .onSnapshot(snap => {
+    .limit(6)
+    .onSnapshot(async snap => {
       const nc = document.getElementById('next-class-container');
       if (!nc) return;
-      if (snap.empty) {
-        nc.innerHTML = `<div class="card" style="padding:24px;text-align:center">
+      const vazio = `<div class="card" style="padding:24px;text-align:center">
           <div style="font-size:32px;margin-bottom:8px">📭</div>
           <p class="t-sm t-muted">Nenhuma aula agendada em breve</p>
         </div>`;
-        return;
+      // Pula encerradas/canceladas, fora do nível, e aulas em que
+      // a presença do aluno já foi lançada
+      let escolhida = null, stEscolhido = null;
+      for (const doc of snap.docs) {
+        const c = doc.data();
+        if (['done','cancelled'].includes(c.status)) continue;
+        if (!nivelMatches(c.nivel, App.profile?.nivel)) continue;
+        const es = await db.collection('arenas').doc(arenaId)
+          .collection('classes').doc(doc.id)
+          .collection('enrollments').doc(uid).get().catch(()=>null);
+        const st = (es && es.exists) ? es.data().status : null;
+        if (['attended','missed','class_cancelled'].includes(st)) continue;
+        escolhida = doc; stEscolhido = st;
+        break;
       }
-      const cls = snap.docs[0].data();
-      const clsId = snap.docs[0].id;
-      // Check enrollment
-      db.collection('arenas').doc(arenaId).collection('classes').doc(clsId)
-        .collection('enrollments').doc(uid).get().then(es => {
-          const st = es.exists ? es.data().status : null;
+      if (!escolhida) { nc.innerHTML = vazio; return; }
+      const cls = escolhida.data();
+      const clsId = escolhida.id;
+      Promise.resolve().then(() => {
+          const st = stEscolhido;
           const pct = Math.round((cls.spotsUsed||0)/(cls.maxSpots||1)*100);
           const barClass = pct>=90?'low':pct>=60?'medium':'high';
           nc.innerHTML = `<div class="class-card status-${getClassStatus(cls)}" onclick="App.go('${SCREENS.S_SCHEDULE}')">
@@ -2637,56 +2648,186 @@ function loadClassEnrollments(clsId, cls) {
             </div>`
           : cls.status === 'done' ? '<div style="padding-bottom:110px"></div>'
           : `<div style="margin-top:16px;padding-bottom:110px">
-              <button class="btn btn-outline flex-1" style="width:100%;color:var(--danger);border-color:var(--danger)"
-                onclick="adminCancelClass('${clsId}')">🗑️ Cancelar aula</button>
+              ${cls.seriesId ? '<div class="t-sm t-dim" style="margin-bottom:10px;text-align:center">🔁 Esta aula faz parte de uma série semanal</div>' : ''}
+              <div class="flex gap-8">
+                <button class="btn btn-primary flex-1" onclick="editClass('${clsId}')">✏️ Editar</button>
+                <button class="btn btn-outline flex-1" style="color:var(--danger);border-color:var(--danger)"
+                  onclick="adminCancelClass('${clsId}')">🗑️ Cancelar</button>
+              </div>
             </div>`}`;
     });
 }
+
+// ── EDITAR AULA (única ou série) ─────────────────────────────
+window.editClass = async function(clsId) {
+  const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
+  const snap = await clsRef.get();
+  if (!snap.exists) return;
+  const c = snap.data();
+  const niveis = [['todos','🌍 Todos os níveis'],['iniciante','🟢 Iniciante'],
+    ['intermediario','🟡 Intermediário'],['avancado','🔴 Avançado'],
+    ['intermediario_avancado','🟠 Intermediário/Avançado'],['feminino','🩷 Feminino']];
+  showModal({
+    icon:'✏️', iconBg:'var(--primary-dim)',
+    title:'Editar aula',
+    html:`<div style="margin-top:14px;text-align:left">
+      <div class="grid-2">
+        <div class="field"><label>Início</label>
+          <input class="input" id="ec-start" type="time" value="${c.startTime||''}"></div>
+        <div class="field"><label>Término</label>
+          <input class="input" id="ec-end" type="time" value="${c.endTime||''}"></div>
+      </div>
+      <div class="grid-2" style="margin-top:10px">
+        <div class="field"><label>Vagas</label>
+          <input class="input" id="ec-spots" type="number" min="1" max="50" value="${c.maxSpots||6}"></div>
+        <div class="field"><label>Quadra</label>
+          <input class="input" id="ec-court" value="${c.court||''}"></div>
+      </div>
+      <div class="field" style="margin-top:10px"><label>Nível</label>
+        <select class="input" id="ec-nivel">
+          ${niveis.map(([v,l]) => `<option value="${v}" ${ (c.nivel||'todos')===v?'selected':'' }>${l}</option>`).join('')}
+        </select>
+      </div>
+      ${!c.seriesId ? `<div class="field" style="margin-top:10px"><label>Data</label>
+        <input class="input" id="ec-date" type="date" value="${c.dateStr||''}"></div>` : ''}
+      ${c.seriesId ? `<div class="field" style="margin-top:10px"><label>Aplicar em</label>
+        <select class="input" id="ec-scope">
+          <option value="one">Só esta aula (${(c.dateStr||'').split('-').reverse().join('/')})</option>
+          <option value="series">Esta e as próximas da série 🔁</option>
+        </select></div>` : ''}
+      <div class="t-sm t-dim" style="margin-top:10px">Alunos inscritos nas aulas alteradas são notificados 🔔</div>
+    </div>`,
+    actions:[
+      {label:'Voltar', style:'btn-outline', close:true},
+      {label:'Salvar', style:'btn-primary', id:'save-edit-class', close:true}
+    ]
+  });
+  window._modalCallbacks['save-edit-class'] = async () => {
+    const start = document.getElementById('ec-start')?.value;
+    const end   = document.getElementById('ec-end')?.value;
+    const spots = parseInt(document.getElementById('ec-spots')?.value);
+    const court = document.getElementById('ec-court')?.value.trim();
+    const nivel = document.getElementById('ec-nivel')?.value;
+    const newDate = document.getElementById('ec-date')?.value || c.dateStr;
+    const scope = document.getElementById('ec-scope')?.value || 'one';
+    if (!start || !end || !spots) { showToast('Preencha os campos','error'); return; }
+    if (start >= end) { showToast('Início deve ser antes do término','error'); return; }
+    showLoading();
+    try {
+      // Alvos: só esta, ou as aulas abertas da série a partir desta data
+      let alvos = [{ id: clsId, data: c }];
+      if (scope === 'series' && c.seriesId) {
+        const sSnap = await db.collection('arenas').doc(App.arenaId)
+          .collection('classes').where('seriesId','==',c.seriesId).get();
+        alvos = sSnap.docs
+          .filter(d => d.data().status === 'open' && d.data().dateStr >= c.dateStr)
+          .map(d => ({ id: d.id, data: d.data() }));
+      }
+      const batch = db.batch();
+      let notificados = 0;
+      for (const alvo of alvos) {
+        const ds = (scope === 'one' && !c.seriesId) ? newDate : alvo.data.dateStr;
+        const ref = db.collection('arenas').doc(App.arenaId).collection('classes').doc(alvo.id);
+        const novoMax = Math.max(spots, alvo.data.spotsUsed || 0);
+        batch.update(ref, {
+          startTime: start, endTime: end, court: court || null, nivel,
+          maxSpots: novoMax, dateStr: ds,
+          startTimestamp: firebase.firestore.Timestamp.fromDate(new Date(`${ds}T${start}`))
+        });
+        // Atualiza os dados espelhados e avisa os inscritos
+        const eSnap = await ref.collection('enrollments').get();
+        eSnap.docs.forEach(ed => {
+          const st = ed.data().status;
+          if (['cancelled','class_cancelled','attended','missed'].includes(st)) return;
+          batch.update(ed.ref, { dateStr: ds, startTime: start, endTime: end,
+            court: court || null,
+            startTimestamp: firebase.firestore.Timestamp.fromDate(new Date(`${ds}T${start}`)) });
+          batch.set(notifRef(App.arenaId, ed.id), notifData('info',
+            'Aula alterada 📝',
+            `A ${alvo.data.modality||'aula'} de ${ds.split('-').reverse().join('/')} agora é às ${start}–${end}${court?` na ${court}`:''}.`,
+            alvo.id));
+          notificados++;
+        });
+      }
+      await batch.commit();
+      hideLoading();
+      showToast(`${alvos.length > 1 ? alvos.length + ' aulas atualizadas' : 'Aula atualizada'}${notificados?` • ${notificados} aluno(s) notificado(s)`:''} ✅`,'success');
+    } catch(e) {
+      hideLoading();
+      showToast(e?.message || 'Erro ao editar','error');
+    }
+  };
+};
 
 // Gestor cancela a aula: some da agenda dos alunos e cada
 // inscrito/fila recebe notificação 🔔. Aula sem nenhuma
 // movimentação é excluída de vez.
 window.adminCancelClass = async function(clsId) {
   if (!App.arenaId) return;
-  confirmModal('Cancelar esta aula?',
-    'Ela sai da agenda dos alunos e todos os inscritos e a fila serão notificados.',
-    '🗑️', async () => {
+  const clsRef0 = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
+  const snap0 = await clsRef0.get();
+  if (!snap0.exists) return;
+  const c0 = snap0.data();
+
+  const executar = async (escopo) => {
     showLoading();
     try {
-      const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
-      const [clsSnap, enrSnap] = await Promise.all([
-        clsRef.get(),
-        clsRef.collection('enrollments').get()
-      ]);
-      if (!clsSnap.exists) throw new Error('Aula não encontrada');
-      const cls = clsSnap.data();
-      const ativos = enrSnap.docs.filter(d =>
-        ['invited','confirmed','waiting','waitlist'].includes(d.data().status));
-
-      if (enrSnap.empty) {
-        // Nunca teve movimentação: pode excluir de verdade
-        await clsRef.delete();
-      } else {
-        const batch = db.batch();
-        batch.update(clsRef, { status: 'cancelled',
+      // Alvos: só esta, ou as abertas da série desta data em diante
+      let alvos = [{ id: clsId, data: c0 }];
+      if (escopo === 'series' && c0.seriesId) {
+        const sSnap = await db.collection('arenas').doc(App.arenaId)
+          .collection('classes').where('seriesId','==',c0.seriesId).get();
+        alvos = sSnap.docs
+          .filter(d => d.data().status === 'open' && d.data().dateStr >= c0.dateStr)
+          .map(d => ({ id: d.id, data: d.data() }));
+      }
+      const batch = db.batch();
+      let canceladas = 0, excluidas = 0;
+      for (const alvo of alvos) {
+        const ref = db.collection('arenas').doc(App.arenaId).collection('classes').doc(alvo.id);
+        const eSnap = await ref.collection('enrollments').get();
+        if (eSnap.empty) { batch.delete(ref); excluidas++; continue; }
+        batch.update(ref, { status: 'cancelled',
           cancelledAt: firebase.firestore.FieldValue.serverTimestamp() });
-        ativos.forEach(d => {
+        canceladas++;
+        eSnap.docs.forEach(d => {
+          if (!['invited','confirmed','waiting','waitlist'].includes(d.data().status)) return;
           batch.update(d.ref, { status: 'class_cancelled' });
           batch.set(notifRef(App.arenaId, d.id), notifData('class_cancelled',
             'Aula cancelada ❌',
-            `A ${cls.modality||'aula'} de ${cls.dateStr||''} às ${cls.startTime||''} foi cancelada pela arena.`,
-            clsId));
+            `A ${alvo.data.modality||'aula'} de ${(alvo.data.dateStr||'').split('-').reverse().join('/')} às ${alvo.data.startTime||''} foi cancelada pela arena.`,
+            alvo.id));
         });
-        await batch.commit();
       }
+      await batch.commit();
       hideLoading();
-      showToast('Aula cancelada','warning');
+      const total = canceladas + excluidas;
+      showToast(total > 1 ? `${total} aulas canceladas` : 'Aula cancelada','warning');
       App.go(SCREENS.A_SCHEDULE);
     } catch(e) {
       hideLoading();
       showToast(e?.message || 'Erro ao cancelar aula','error');
     }
-  });
+  };
+
+  if (c0.seriesId) {
+    showModal({
+      icon:'🗑️', iconBg:'var(--danger-dim)',
+      title:'Cancelar aula da série',
+      text:'Esta aula faz parte de uma série semanal 🔁. O que deseja cancelar? Os inscritos serão notificados.',
+      actions:[
+        {label:'Só esta aula', style:'btn-outline', id:'cc-one', close:true},
+        {label:'Esta e as próximas', style:'btn-danger', id:'cc-series', close:true},
+        {label:'Voltar', style:'btn-ghost', close:true}
+      ]
+    });
+    window._modalCallbacks['cc-one'] = () => executar('one');
+    window._modalCallbacks['cc-series'] = () => executar('series');
+  } else {
+    confirmModal('Cancelar esta aula?',
+      'Ela sai da agenda dos alunos e todos os inscritos e a fila serão notificados.',
+      '🗑️', () => executar('one'));
+  }
 };
 
 window.openAttendanceMode = function(clsId) {
@@ -2941,11 +3082,13 @@ function attachAdminCreate() {
     try {
       const col = db.collection('arenas').doc(App.arenaId).collection('classes');
       const batch = db.batch();
+      // Série recorrente: todas as aulas compartilham o mesmo seriesId
+      const seriesId = datas.length > 1 ? col.doc().id : null;
       datas.forEach(ds => {
         batch.set(col.doc(), {
           modality, dateStr: ds, startTime:start, endTime:end, court,
           maxSpots: spots, spotsUsed: 0, waitlist: [],
-          status: 'open', invite, nivel,
+          status: 'open', invite, nivel, seriesId,
           startTimestamp: firebase.firestore.Timestamp.fromDate(new Date(`${ds}T${start}`)),
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
