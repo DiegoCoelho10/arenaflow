@@ -1321,6 +1321,25 @@ function liveStudentHome() {
   const uid = App.user.uid;
   const arenaId = App.arenaId;
 
+  // Arena ao vivo: capa, cor e nome refletem sem precisar relogar
+  const unsubArena = db.collection('arenas').doc(arenaId).onSnapshot(asnap => {
+    if (!asnap.exists) return;
+    const a = asnap.data();
+    const mudouCapa = (App.arena?.coverBase64 || null) !== (a.coverBase64 || null);
+    const mudouCor  = (App.arena?.themeColor || null) !== (a.themeColor || null);
+    App.arena = a;
+    if (a.themeColor) applyArenaTheme(a.themeColor);
+    // Atualiza o hero da home sem recarregar a tela toda
+    const hero = document.querySelector('.home-hero');
+    if (hero && mudouCapa) {
+      const cover = a.coverBase64 || a.photoBase64;
+      hero.style.cssText = cover
+        ? `background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.94)),url(${JSON.stringify(cover)});background-size:cover;background-position:center;`
+        : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);';
+    }
+  }, ()=>{});
+  App.unsubscribers.push(unsubArena);
+
   // Live stats direto da ficha do aluno (fonte da verdade)
   const unsub1 = db.collection('arenas').doc(arenaId)
     .collection('students').doc(uid).onSnapshot(snap => {
