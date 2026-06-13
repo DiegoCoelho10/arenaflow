@@ -524,47 +524,6 @@ function renderAvatar(profile, sizeClass, extra='') {
   }
   return `<div class="avatar ${sizeClass} ${extra}">${getInitials(profile?.name||'?')}</div>`;
 }
-window.uploadArenaPhoto = function() {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*';
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    showLoading();
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const img = new Image();
-      img.onload = async () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 800; canvas.height = 400;
-        const ctx = canvas.getContext('2d');
-        // Crop centralizado landscape
-        const targetRatio = 2;
-        const imgRatio = img.width / img.height;
-        let sx=0, sy=0, sw=img.width, sh=img.height;
-        if (imgRatio > targetRatio) {
-          sw = img.height * targetRatio;
-          sx = (img.width - sw) / 2;
-        } else {
-          sh = img.width / targetRatio;
-          sy = (img.height - sh) / 2;
-        }
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 800, 400);
-        const base64 = canvas.toDataURL('image/jpeg', 0.8);
-        try {
-          await db.collection('arenas').doc(App.arenaId).update({ photoBase64: base64 });
-          App.arena = { ...App.arena, photoBase64: base64 };
-          hideLoading();
-          showToast('Foto da arena atualizada! ✅', 'success');
-          App.go(SCREENS.A_SETTINGS);
-        } catch(err) { hideLoading(); showToast('Erro ao salvar foto','error'); }
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-  input.click();
-};
 
 window.uploadProfilePhoto = function() {
   const input = document.createElement('input');
@@ -2291,7 +2250,7 @@ function screenAdminHome() {
   const a = App.arena || {};
   const g = App.profile || {};
   return `<div class="screen">
-    <div class="home-hero" style="${a.photoBase64 ? 'background-image:linear-gradient(to bottom,rgba(7,7,17,0.45),rgba(7,7,17,0.9)),url(' + JSON.stringify(a.photoBase64) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(160deg,rgba(255,94,26,0.12) 0%,transparent 60%);'}">
+    <div class="home-hero" style="${(a.coverBase64||a.photoBase64) ? 'background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.92)),url(' + JSON.stringify(a.coverBase64||a.photoBase64) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);'}">
       <div class="flex items-center justify-between">
         <div class="home-greeting">
           <small>Painel da Arena</small>${a.name||'Arena'} 🏟️
@@ -3472,15 +3431,6 @@ function screenAdminSettings() {
     <div class="topbar"><span class="topbar-title">⚙️ Configurações</span></div>
     <div class="settings-group">
       <div class="settings-label">Arena</div>
-      <div class="settings-item" onclick="uploadArenaPhoto()">
-        <div class="settings-icon si-blue" style="overflow:hidden;padding:0">
-          ${a.photoBase64
-            ? `<img src="${a.photoBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`
-            : `<span style="font-size:18px;display:flex;align-items:center;justify-content:center;height:100%">📸</span>`}
-        </div>
-        <div class="flex-1"><div class="t-h3">Foto da arena</div><div class="t-xs t-muted">${a.photoBase64?'Toque para alterar':'Adicionar foto da quadra'}</div></div>
-        <span class="settings-chevron">›</span>
-      </div>
       <div class="settings-item">
         <div class="settings-icon si-green">🎫</div>
         <div class="flex-1">
@@ -3498,8 +3448,8 @@ function screenAdminSettings() {
         <div class="t-sm t-muted" style="margin-bottom:12px">A foto e a cor aparecem para todos os alunos da sua arena.</div>
         <div style="position:relative;height:120px;border-radius:14px;overflow:hidden;margin-bottom:12px;background:#4A1B0C"
              id="cover-preview">
-          ${a.coverBase64
-            ? `<img src="${a.coverBase64}" style="width:100%;height:100%;object-fit:cover">`
+          ${(a.coverBase64 || a.photoBase64)
+            ? `<img src="${a.coverBase64 || a.photoBase64}" style="width:100%;height:100%;object-fit:cover">`
             : `<div style="position:absolute;inset:0;background:linear-gradient(160deg,#993C1D,#4A1B0C)"></div>
                <div style="position:absolute;top:18px;right:34px;width:36px;height:36px;border-radius:50%;background:#FAC775"></div>`}
           <div style="position:absolute;bottom:8px;left:12px;font-size:12px;color:#FAECE7;font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.6)">${a.name||'Sua arena'}</div>
@@ -3689,8 +3639,11 @@ window.uploadArenaCover = function(ev) {
       }
       showLoading();
       try {
-        await db.collection('arenas').doc(App.arenaId).update({ coverBase64: base64 });
-        App.arena = { ...App.arena, coverBase64: base64 };
+        await db.collection('arenas').doc(App.arenaId).update({
+          coverBase64: base64,
+          photoBase64: firebase.firestore.FieldValue.delete()
+        });
+        App.arena = { ...App.arena, coverBase64: base64, photoBase64: null };
         hideLoading();
         showToast('Capa atualizada! 📸','success');
         App.go(SCREENS.A_SETTINGS);
