@@ -5,6 +5,36 @@
 
 'use strict';
 
+// ── TEMA WHITE-LABEL: cada arena tem sua cor de destaque ─────
+function _hexToRgb(hex) {
+  hex = (hex||'').replace('#','');
+  if (hex.length === 3) hex = hex.split('').map(c=>c+c).join('');
+  const n = parseInt(hex, 16);
+  return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+}
+function _rgbToHex(r,g,b) {
+  const h = x => Math.max(0,Math.min(255,Math.round(x))).toString(16).padStart(2,'0');
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+function _luminance({r,g,b}) { return (0.299*r + 0.587*g + 0.114*b) / 255; }
+function _ensureReadable(hex) {
+  let rgb = _hexToRgb(hex);
+  if (!rgb || isNaN(rgb.r)) return '#D85A30';
+  let guard = 0;
+  while (_luminance(rgb) < 0.32 && guard++ < 12) {
+    rgb = { r: rgb.r + (255-rgb.r)*0.18, g: rgb.g + (255-rgb.g)*0.18, b: rgb.b + (255-rgb.b)*0.18 };
+  }
+  return _rgbToHex(rgb.r, rgb.g, rgb.b);
+}
+function applyArenaTheme(color) {
+  const c = _ensureReadable(color || '#D85A30');
+  const { r, g, b } = _hexToRgb(c);
+  const root = document.documentElement.style;
+  root.setProperty('--primary', c);
+  root.setProperty('--primary-dim', `rgba(${r},${g},${b},0.16)`);
+  root.setProperty('--primary-glow', `rgba(${r},${g},${b},0.35)`);
+}
+
 // ── Helpers Fase 1 (plano gratuito: lógica em transações + Rules) ──
 
 // Auto-reparo: garante o doc do aluno em arenas/{id}/students/{uid}
@@ -327,6 +357,7 @@ const App = {
           this.arenaId = this.profile.arenaId;
           const arenaSnap = await db.collection('arenas').doc(this.arenaId).get();
           this.arena = arenaSnap.data();
+          if (this.arena?.themeColor) applyArenaTheme(this.arena.themeColor);
           // Auto-claim: arena antiga sem dono registrado e o e-mail bate
           if (this.arena && !this.arena.gestorUid
               && (this.arena.gestorEmail||'').toLowerCase() === (this.user.email||'').toLowerCase()) {
@@ -359,6 +390,7 @@ const App = {
           if (this.arenaId) {
             const aSnap = await db.collection('arenas').doc(this.arenaId).get().catch(()=>null);
             this.arena = (aSnap && aSnap.exists) ? aSnap.data() : null;
+            if (this.arena?.themeColor) applyArenaTheme(this.arena.themeColor);
             // Auto-reparo do vínculo (alunos antigos sem doc em /students)
             await ensureStudentDoc(this.arenaId, uid, this.profile);
             // Ficha do aluno (tipo/nível/status) é a fonte da verdade
@@ -546,13 +578,13 @@ window.uploadProfilePhoto = function() {
       const img = new Image();
       img.onload = async () => {
         const canvas = document.createElement('canvas');
-        canvas.width = 200; canvas.height = 200;
+        canvas.width = 400; canvas.height = 400;
         const ctx = canvas.getContext('2d');
         const minDim = Math.min(img.width, img.height);
         const sx = (img.width - minDim) / 2;
         const sy = (img.height - minDim) / 2;
-        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 200, 200);
-        const base64 = canvas.toDataURL('image/jpeg', 0.75);
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 400, 400);
+        const base64 = canvas.toDataURL('image/jpeg', 0.72);
         try {
           await db.collection('users').doc(App.user.uid).update({ photoBase64: base64 });
           if (App.arenaId) {
@@ -1240,12 +1272,16 @@ function screenStudentHome() {
   const p = App.profile || {};
   const firstName = (p.name||'Aluno').split(' ')[0];
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+  const saud = hour < 12 ? 'Bom dia' : hour < 18 ? 'E aí' : 'Boa noite';
+  const cover = App.arena?.coverBase64 || App.arena?.photoBase64;
+  const heroStyle = cover
+    ? 'background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.94)),url(' + JSON.stringify(cover) + ');background-size:cover;background-position:center;'
+    : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);';
   return `<div class="screen">
-   <div class="home-hero" style="${App.arena?.photoBase64 ? 'background-image:linear-gradient(to bottom,rgba(7,7,17,0.55),rgba(7,7,17,0.92)),url(' + JSON.stringify(App.arena.photoBase64) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(160deg,rgba(61,110,255,0.12) 0%,transparent 60%),linear-gradient(220deg,rgba(255,94,26,0.08) 0%,transparent 60%);'}">
+   <div class="home-hero" style="${heroStyle}">
       <div class="flex items-center justify-between">
         <div class="home-greeting">
-          <small>${greeting},</small>${firstName} 👋
+          <small>${saud}, ${firstName}!</small>Bora pra areia? 🏖️
         </div>
         <div class="flex items-center" style="gap:14px">
           <div onclick="App.go('${SCREENS.S_NOTIFS}')" style="position:relative;font-size:24px;cursor:pointer;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-8px;background:var(--danger,#ff4d4d);color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 5px;min-width:16px;text-align:center"></span></div>
@@ -1254,18 +1290,18 @@ function screenStudentHome() {
       </div>
       <div class="grid-2" style="margin-top:16px" id="home-stats">
         <div class="stat-card primary"><div class="stat-value" id="st-month">—</div><div class="stat-label">Aulas este mês</div></div>
-        <div class="stat-card success"><div class="stat-value" id="st-streak">—</div><div class="stat-label">Semanas seguidas</div></div>
+        <div class="stat-card success"><div class="stat-value" id="st-streak">—</div><div class="stat-label">Semanas na areia</div></div>
       </div>
     </div>
     <div class="section-header">
-      <span class="section-title">⏰ Próxima aula</span>
+      <span class="section-title">⏰ Próximo treino</span>
       <span class="section-action" onclick="App.go('${SCREENS.S_SCHEDULE}')">Ver tudo</span>
     </div>
     <div id="next-class-container" style="padding:0 20px 8px">
       <div class="card t-muted t-center" style="padding:24px">Carregando...</div>
     </div>
     <div class="section-header" style="margin-top:8px">
-      <span class="section-title">🏆 Ranking do mês</span>
+      <span class="section-title">🏆 Reis da areia</span>
       <span class="section-action" onclick="App.go('${SCREENS.S_RANKING}')">Ver completo</span>
     </div>
     <div id="mini-ranking" style="padding:0 20px 8px">
@@ -1359,7 +1395,7 @@ function liveStudentHome() {
                 <div class="t-h3">${cls.modality||'Futevôlei'}</div>
                 <div class="t-sm t-muted">${formatDate(cls.startTimestamp)} • ${cls.startTime}–${cls.endTime}</div>
               </div>
-              ${st ? `<span class="status-pill ${STATUS_CSS[st]||''}">${STATUS_LABELS[st]||st}</span>` : `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();enrollClass('${clsId}')">Participar</button>`}
+              ${st ? `<span class="status-pill ${STATUS_CSS[st]||''}">${STATUS_LABELS[st]||st}</span>` : `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();enrollClass('${clsId}')">Tô dentro</button>`}
             </div>
             <div class="spots-bar" style="margin-top:10px">
               <div class="spots-fill ${barClass}" style="width:${pct}%"></div>
@@ -1516,7 +1552,7 @@ function renderClassCards(docs, container) {
               <div style="font-size:13px;font-weight:700;color:var(--warning)">${hoursLeft}h ${minsLeft}min</div>
             </div>`;
           } else {
-            actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();enrollClass('${clsId}')">Participar</button>`;
+            actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();enrollClass('${clsId}')">Tô dentro</button>`;
           }
         } else if (status === 'waitlist') {
           actionBtn = `<span class="status-pill status-waitlist">Fila #${waitPos||'?'}</span>`;
@@ -3438,6 +3474,38 @@ function screenAdminSettings() {
     </div>
     ${ (a.gestorUid && App.user && a.gestorUid === App.user.uid) ? `
     <div class="settings-group">
+      <div class="settings-label">🎨 Identidade da arena</div>
+      <div style="padding:0 20px 12px">
+        <div class="t-sm t-muted" style="margin-bottom:12px">A foto e a cor aparecem para todos os alunos da sua arena.</div>
+        <div style="position:relative;height:120px;border-radius:14px;overflow:hidden;margin-bottom:12px;background:#4A1B0C"
+             id="cover-preview">
+          ${a.coverBase64
+            ? `<img src="${a.coverBase64}" style="width:100%;height:100%;object-fit:cover">`
+            : `<div style="position:absolute;inset:0;background:linear-gradient(160deg,#993C1D,#4A1B0C)"></div>
+               <div style="position:absolute;top:18px;right:34px;width:36px;height:36px;border-radius:50%;background:#FAC775"></div>`}
+          <div style="position:absolute;bottom:8px;left:12px;font-size:12px;color:#FAECE7;font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.6)">${a.name||'Sua arena'}</div>
+        </div>
+        <input type="file" id="cover-file" accept="image/*" style="display:none" onchange="uploadArenaCover(event)">
+        <button class="btn btn-outline btn-full" onclick="document.getElementById('cover-file').click()">📷 Trocar foto da capa</button>
+
+        <div class="field" style="margin-top:16px">
+          <label>Cor de destaque da arena</label>
+          <div class="flex items-center gap-10" style="margin-top:6px">
+            <input type="color" id="theme-color" value="${a.themeColor||'#D85A30'}"
+              oninput="applyArenaTheme(this.value)"
+              style="width:52px;height:40px;border:none;border-radius:10px;background:none;cursor:pointer;padding:0">
+            <div class="flex gap-8" style="flex-wrap:wrap">
+              ${['#D85A30','#F5A623','#E24B4A','#1D9E75','#378ADD','#D4537E'].map(c =>
+                `<div onclick="document.getElementById('theme-color').value='${c}';applyArenaTheme('${c}')"
+                  style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:2px solid rgba(255,255,255,.15)"></div>`).join('')}
+            </div>
+          </div>
+          <div class="t-sm t-dim" style="margin-top:8px">Cores muito escuras são clareadas automaticamente para continuar legíveis.</div>
+        </div>
+        <button class="btn btn-primary btn-full" style="margin-top:12px" onclick="saveArenaTheme()">Salvar cor</button>
+      </div>
+    </div>
+    <div class="settings-group">
       <div class="settings-label">👥 Equipe</div>
       <div style="padding:0 20px 12px">
         <div class="t-sm t-muted" style="margin-bottom:12px">
@@ -3574,6 +3642,57 @@ function attachAdminSettings() {
     } catch(e) { hideLoading(); showToast('Erro ao salvar','error'); }
   });
 }
+
+window.uploadArenaCover = function(ev) {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('Selecione uma imagem','error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = async () => {
+      // Capa em alta: tenta 1600px/90% e cai de qualidade só se
+      // precisar para caber no limite de 1MB do Firestore.
+      const maxW = 1600;
+      const scale = Math.min(1, maxW / img.width);
+      const cnv = document.createElement('canvas');
+      cnv.width = Math.round(img.width * scale);
+      cnv.height = Math.round(img.height * scale);
+      cnv.getContext('2d').drawImage(img, 0, 0, cnv.width, cnv.height);
+      let base64 = cnv.toDataURL('image/jpeg', 0.92);
+      const qualidades = [0.88, 0.84, 0.80, 0.74];
+      let qi = 0;
+      while (base64.length > 980000 && qi < qualidades.length) {
+        base64 = cnv.toDataURL('image/jpeg', qualidades[qi++]);
+      }
+      if (base64.length > 980000) {
+        showToast('Imagem muito pesada mesmo comprimida — tente outra foto','error'); return;
+      }
+      showLoading();
+      try {
+        await db.collection('arenas').doc(App.arenaId).update({ coverBase64: base64 });
+        App.arena = { ...App.arena, coverBase64: base64 };
+        hideLoading();
+        showToast('Capa atualizada! 📸','success');
+        App.go(SCREENS.A_SETTINGS);
+      } catch(e) { hideLoading(); showToast('Erro ao salvar capa','error'); }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.saveArenaTheme = async function() {
+  const color = document.getElementById('theme-color')?.value || '#D85A30';
+  showLoading();
+  try {
+    await db.collection('arenas').doc(App.arenaId).update({ themeColor: color });
+    App.arena = { ...App.arena, themeColor: color };
+    applyArenaTheme(color);
+    hideLoading();
+    showToast('Cor da arena salva! 🎨','success');
+  } catch(e) { hideLoading(); showToast('Erro ao salvar cor','error'); }
+};
 
 window.editArenaInfo = function() {
   const a = App.arena || {};
@@ -4010,6 +4129,7 @@ function attachSANewArena() {
         inviteCode,
         studentCode,
         gestorUid: null,
+        themeColor: '#D85A30',
         settings: { confirmationHours:3, waitlistResponseHours:1,
                     enrollMensalistaHours:24, enrollAvulsoHours:12 },
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
