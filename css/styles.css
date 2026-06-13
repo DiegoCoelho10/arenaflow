@@ -8,21 +8,23 @@
 
 /* ── TOKENS ──────────────────────────────────────────────── */
 :root {
-  /* Colors */
-  --bg:          #070711;
-  --surface:     #0F0F1E;
-  --card:        #14142A;
-  --card-hover:  #1A1A35;
-  --border:      rgba(255,255,255,0.07);
-  --border-md:   rgba(255,255,255,0.12);
+  /* Colors — tema pôr-do-sol (areia + coral) */
+  --bg:          #1A1411;
+  --surface:     #211A15;
+  --card:        #2C2620;
+  --card-hover:  #36302A;
+  --border:      rgba(255,210,180,0.08);
+  --border-md:   rgba(255,210,180,0.14);
 
-  --primary:     #3D6EFF;
-  --primary-dim: rgba(61,110,255,0.15);
-  --primary-glow:rgba(61,110,255,0.35);
+  /* --primary é a cor de destaque da arena (white-label).
+     O JS sobrescreve estas 3 com a cor escolhida pelo dono. */
+  --primary:     #D85A30;
+  --primary-dim: rgba(216,90,48,0.16);
+  --primary-glow:rgba(216,90,48,0.35);
 
-  --accent:      #FF5E1A;
-  --accent-dim:  rgba(255,94,26,0.15);
-  --accent-glow: rgba(255,94,26,0.35);
+  --accent:      #F5A623;
+  --accent-dim:  rgba(245,166,35,0.16);
+  --accent-glow: rgba(245,166,35,0.35);
 
   --success:     #00D97E;
   --success-dim: rgba(0,217,126,0.15);
@@ -31,9 +33,9 @@
   --danger:      #FF4757;
   --danger-dim:  rgba(255,71,87,0.15);
 
-  --text:        #F0F0FF;
-  --text-2:      #A0A0C0;
-  --text-3:      #60607A;
+  --text:        #FAECE7;
+  --text-2:      #C4B5AC;
+  --text-3:      #8A7D74;
 
   /* Typography */
   --font-head: 'Syne', sans-serif;
