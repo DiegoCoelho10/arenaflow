@@ -401,6 +401,12 @@ const App = {
               this.profile = { ...this.profile,
                 tipo: sd.tipo ?? null, nivel: sd.nivel ?? null,
                 status: sd.status || 'active' };
+              // Sincroniza a foto do perfil → ficha (alimenta ranking e lista do gestor)
+              const myPhoto = this.profile?.photoBase64;
+              if (myPhoto && sd.photoBase64 !== myPhoto) {
+                db.collection('arenas').doc(this.arenaId).collection('students')
+                  .doc(uid).update({ photoBase64: myPhoto }).catch(()=>{});
+              }
             }
           }
           hideLoading();
@@ -1384,9 +1390,9 @@ function liveStudentHome() {
     });
   App.unsubscribers.push(unsub2);
 
-  // Mini ranking (top 3 do mês, direto das fichas)
-  db.collection('arenas').doc(arenaId).collection('students')
-    .orderBy('monthClasses','desc').limit(10).get().then(snap => {
+  // Mini ranking (top 3 do mês, ao vivo das fichas)
+  const unsubMini = db.collection('arenas').doc(arenaId).collection('students')
+    .orderBy('monthClasses','desc').limit(10).onSnapshot(snap => {
       const mr = document.getElementById('mini-ranking');
       if (!mr) return;
       const top = snap.docs
@@ -1400,13 +1406,14 @@ function liveStudentHome() {
           const medals = ['🥇','🥈','🥉'];
           return `<div class="flex items-center gap-12" style="padding:12px 16px;border-bottom:1px solid var(--border);${i===top.length-1?'border:none':''}">
             <span style="font-size:20px">${medals[i]}</span>
-            <div class="avatar avatar-sm">${getInitials(x.data.name||'?')}</div>
+            ${renderAvatar(x.data,'avatar-sm')}
             <span class="t-h3 flex-1">${x.data.name||'—'}</span>
             <span class="badge badge-primary">${x.val} aula${x.val>1?'s':''}</span>
           </div>`;
         }).join('')
       }</div>`;
-    }).catch(()=>{});
+    }, ()=>{});
+  App.unsubscribers.push(unsubMini);
 }
 
 function getClassStatus(cls) {
@@ -1989,7 +1996,7 @@ function loadRanking(type) {
             const isMe = x.id === uid;
             return `<div class="rank-list-item">
               <span class="rank-num ${isMe ? 'me' : ''}">${i+4}</span>
-              <div class="avatar avatar-sm ${isMe ? 'avatar-ring' : ''}">${getInitials(data.name||'?')}</div>
+              ${renderAvatar(data, 'avatar-sm', isMe ? 'avatar-ring' : '')}
               <div class="flex-1">
                 <div class="t-h3">${data.name||'—'} ${isMe?'<span style="color:var(--primary)">(você)</span>':''}</div>
                 <div class="t-xs t-muted">${data.badges?.length||0} emblemas</div>
@@ -3175,7 +3182,7 @@ function renderStudentList(students) {
       ? '<span class="badge ' + (s.tipo==='mensalista'?'badge-primary':'badge-muted') + '">' + (s.tipo==='mensalista'?'⭐ Mensalista':'🎫 Avulso') + '</span>'
       : '';
     return `<div class="arena-row" onclick="App.go('${SCREENS.A_STUDENT}',{uid:'${s.id}'})">
-      <div class="avatar avatar-md">${getInitials(s.name||'?')}</div>
+      ${renderAvatar(s, 'avatar-md')}
       <div class="flex-1">
         <div class="t-h3">${s.name||'—'}</div>
         <div class="t-xs t-muted">${s.totalClasses||0} aulas • ${s.badges?.length||0} emblemas</div>
@@ -3213,6 +3220,15 @@ function liveAdminStudentDetail() {
   sRef.get().then(async snap => {
     const body = document.getElementById('student-detail-body');
     if (!body) return;
+    // Fallback de foto: ficha sem foto → puxa do perfil global e sincroniza
+    if (snap.exists && !snap.data().photoBase64) {
+      const uSnap = await db.collection('users').doc(uid).get().catch(()=>null);
+      const ph = uSnap && uSnap.exists ? uSnap.data().photoBase64 : null;
+      if (ph) {
+        sRef.update({ photoBase64: ph }).catch(()=>{});
+        snap = { exists: true, data: () => ({ ...snap.data(), photoBase64: ph }) };
+      }
+    }
     if (!snap.exists) {
       // Auto-reparo: aluno existe em users mas não em /students — cria agora
       try {
@@ -3240,7 +3256,7 @@ function liveAdminStudentDetail() {
     const statusMap = {active:'badge-success',inactive:'badge-warning',blocked:'badge-danger'};
     body.innerHTML = `
       <div class="profile-header">
-        <div class="avatar avatar-xl">${getInitials(s.name||'?')}</div>
+        ${renderAvatar(s, 'avatar-xl')}
         <div class="t-h1">${s.name||'—'}</div>
         <span class="badge ${statusMap[s.status||'active']}">${s.status==='active'?'Ativo':s.status==='blocked'?'Bloqueado':'Inativo'}</span>
         <div class="profile-stats" style="margin-top:16px">
