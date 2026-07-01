@@ -1,7 +1,7 @@
-const CACHE_NAME = 'arenaflow-v11';
+const CACHE_NAME = 'arenaflow-v13';
 const ASSETS = [
-  '/', '/index.html', '/css/styles.css',
-  '/js/firebase-config.js', '/js/app.js', '/manifest.json'
+  './', './index.html', './css/styles.css',
+  './js/firebase-config.js', './js/app.js', './manifest.json'
 ];
 
 self.addEventListener('install', e => {
@@ -33,9 +33,7 @@ self.addEventListener('push', e => {
   const data = e.data?.json() || {};
   e.waitUntil(self.registration.showNotification(data.title || 'ArenaFlow', {
     body: data.body || '',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
-    data: data.url || '/'
+    data: data.url || './'
   }));
 });
 
