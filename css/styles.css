@@ -805,3 +805,35 @@ select.input { appearance: none; cursor: pointer; }
   .splash-actions { margin-top: 32px; }
   .auth-header { padding: 40px 28px 24px; }
 }
+
+
+/* ── AUTH BACKGROUND CAROUSEL (splash/login/register) ─────── */
+.has-auth-bg { position: relative; overflow: hidden; }
+.has-auth-bg > *:not(.auth-bg) { position: relative; z-index: 1; }
+.auth-bg { position: absolute; inset: 0; z-index: 0; }
+.auth-bg-layer {
+  position: absolute; inset: 0;
+  background-size: cover;
+  background-position: center 30%;
+  opacity: 0;
+  transition: opacity 1.6s ease-in-out;
+  will-change: opacity, transform;
+  animation: authKenBurns 16s ease-in-out infinite alternate;
+}
+.auth-bg-layer.active { opacity: 1; }
+.auth-bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    rgba(7,7,17,.60) 0%,
+    rgba(7,7,17,.45) 30%,
+    rgba(7,7,17,.72) 62%,
+    rgba(7,7,17,.94) 100%);
+}
+@keyframes authKenBurns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.09); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-bg-layer { animation: none; }
+}
