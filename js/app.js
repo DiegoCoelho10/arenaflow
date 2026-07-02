@@ -304,12 +304,16 @@ const App = {
 
   init() {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
     }
     this.tryFullscreen();
+    setTimeout(maybeOfferInstall, 2500);
     auth.onAuthStateChanged(u => {
       if (u) {
         this.user = u;
+        if (this._inviteFlow) return; // ativação de gestor conduz a própria navegação
+        try { localStorage.removeItem('af_biometric'); } catch(e) {}
+        if (localStorage.getItem('af_lock') && !this._unlocked) { showLockScreen(u.uid); return; }
         this.loadUserProfile(u.uid);
       } else {
         this.user = null; this.profile = null; this.role = null;
@@ -449,7 +453,7 @@ function showToast(msg, type='', duration=2800) {
   const c = document.getElementById('toast-container');
   const t = document.createElement('div');
   t.className = `toast ${type ? 'toast-'+type : ''}`;
-  t.innerHTML = `<span>${icons[type]||''}</span> ${msg}`;
+  t.innerHTML = `<span>${icons[type]||''}</span> ${esc(msg)}`;
   c.appendChild(t);
   setTimeout(() => {
     t.classList.add('exit');
@@ -465,8 +469,8 @@ function showModal({icon='ℹ️', iconBg='var(--primary-dim)', title='', text='
   ).join('');
   o.innerHTML = `<div class="modal">
     <div class="modal-icon" style="background:${iconBg}">${icon}</div>
-    <h2 class="t-h2 t-center" style="margin-bottom:8px">${title}</h2>
-    ${text ? `<p class="t-body t-muted t-center">${text}</p>` : ''}
+    <h2 class="t-h2 t-center" style="margin-bottom:8px">${esc(title)}</h2>
+    ${text ? `<p class="t-body t-muted t-center">${esc(text)}</p>` : ''}
     ${html}
     <div class="modal-actions">${actionBtns}</div>
   </div>`;
@@ -568,8 +572,11 @@ window.uploadProfilePhoto = function() {
   };
   input.click();
 };
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 function getInitials(name='') {
-  return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  return esc(String(name).split(' ').slice(0,2).map(w=>w&&w[0]||'').join('').toUpperCase());
 }
 
 function formatDate(ts) {
@@ -727,6 +734,9 @@ function screenSplash() {
       <button class="btn btn-ghost btn-full" id="btn-gestor" style="color:var(--text-2);font-size:14px">
         🏟️ Sou gestor de uma arena — tenho um código
       </button>
+      <button class="btn btn-outline btn-full" id="btn-install" style="display:none;gap:8px">
+        📲 Instalar o aplicativo no celular
+      </button>
     </div>
   </div>`;
 }
@@ -734,6 +744,9 @@ function attachSplash() {
  document.getElementById('btn-login')?.addEventListener('click', () => App.go(SCREENS.LOGIN));
   document.getElementById('btn-register')?.addEventListener('click', () => App.go(SCREENS.REGISTER));
   document.getElementById('btn-gestor')?.addEventListener('click', () => App.go(SCREENS.INVITE));
+  const bi = document.getElementById('btn-install');
+  if (bi && !isStandalone()) bi.style.display = '';
+  bi?.addEventListener('click', () => promptInstall());
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -764,9 +777,6 @@ function screenLogin() {
         </div>
       </div>
       <button class="btn btn-primary btn-full btn-lg" id="btn-login-submit">Entrar</button>
-      <button class="btn btn-outline btn-full" id="btn-biometric" style="gap:10px">
-        <span>🔐</span> Entrar com Biometria
-      </button>
       <div class="auth-footer">
         <a onclick="App.go('${SCREENS.FORGOT}')" style="cursor:pointer">Esqueci minha senha</a>
       </div>
@@ -782,8 +792,6 @@ function attachLogin() {
     pwd.type = pwd.type === 'password' ? 'text' : 'password';
     toggle.textContent = pwd.type === 'password' ? '👁️' : '🙈';
   });
-
-  document.getElementById('btn-biometric')?.addEventListener('click', loginBiometric);
 
   btnSubmit?.addEventListener('click', async () => {
     const email = document.getElementById('login-email')?.value.trim();
@@ -812,34 +820,112 @@ function attachLogin() {
   });
 }
 
-async function loginBiometric() {
-  if (!window.PublicKeyCredential) {
-    showToast('Biometria não disponível neste dispositivo', 'warning');
+window.promptInstall = async function() {
+  if (window.deferredInstallPrompt) {
+    window.deferredInstallPrompt.prompt();
+    const choice = await window.deferredInstallPrompt.userChoice.catch(()=>null);
+    if (choice && choice.outcome === 'accepted') showToast('Pronto! Procure o ArenaFlow na tela inicial 🏐','success');
+    window.deferredInstallPrompt = null;
     return;
   }
-  try {
-    const stored = localStorage.getItem('af_biometric');
-    if (!stored) {
-      showToast('Configure a biometria no seu perfil primeiro', 'warning');
-      return;
-    }
-    const {email, password} = JSON.parse(atob(stored));
-    showLoading();
-    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    if (!available) { hideLoading(); showToast('Biometria não disponível', 'warning'); return; }
-    // Trigger biometric prompt via WebAuthn get
-    await navigator.credentials.get({
-      publicKey: {
-        challenge: new Uint8Array(32),
-        timeout: 60000,
-        userVerification: 'required'
-      }
-    }).catch(() => null);
-    await auth.signInWithEmailAndPassword(email, password);
-  } catch(e) {
-    hideLoading();
-    showToast('Falha na biometria', 'error');
+  if (isIOS()) {
+    showModal({
+      icon:'📲', iconBg:'var(--primary-dim)', title:'Instalar no iPhone',
+      html:`<div style="text-align:left;margin-top:12px;display:flex;flex-direction:column;gap:10px">
+        <div class="t-sm">1️⃣ Abra este site no <b>Safari</b></div>
+        <div class="t-sm">2️⃣ Toque no botão <b>Compartilhar</b> (quadrado com seta ↑)</div>
+        <div class="t-sm">3️⃣ Escolha <b>"Adicionar à Tela de Início"</b></div>
+        <div class="t-sm">4️⃣ Confirme — o ArenaFlow vira um app no seu celular 🏐</div>
+      </div>`,
+      actions:[{label:'Entendi!', style:'btn-primary', close:true}]
+    });
+    return;
   }
+  showModal({
+    icon:'📲', iconBg:'var(--primary-dim)', title:'Instalar o app',
+    html:`<div style="text-align:left;margin-top:12px;display:flex;flex-direction:column;gap:10px">
+      <div class="t-sm">1️⃣ Toque nos <b>3 pontinhos (⋮)</b> do navegador</div>
+      <div class="t-sm">2️⃣ Escolha <b>"Instalar aplicativo"</b> ou <b>"Adicionar à tela inicial"</b></div>
+      <div class="t-sm">3️⃣ Confirme — o ArenaFlow vira um app no seu celular 🏐</div>
+    </div>`,
+    actions:[{label:'Entendi!', style:'btn-primary', close:true}]
+  });
+};
+
+function maybeOfferInstall() {
+  try {
+    if (isStandalone()) return;
+    if (localStorage.getItem('af_install_hint')) return;
+    if (!/android|iphone|ipad|ipod/i.test(navigator.userAgent)) return;
+    localStorage.setItem('af_install_hint','1');
+    showModal({
+      icon:'🏐', iconBg:'var(--primary-dim)',
+      title:'Leve o ArenaFlow com você',
+      text:'Instale o app no celular: abre em tela cheia, direto da tela inicial, sem depender do navegador.',
+      actions:[
+        {label:'Agora não', style:'btn-outline', close:true},
+        {label:'Instalar', style:'btn-primary', id:'do-install', close:true}
+      ]
+    });
+    window._modalCallbacks['do-install'] = () => promptInstall();
+  } catch(e) {}
+}
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.matchMedia('(display-mode: fullscreen)').matches ||
+         window.navigator.standalone === true;
+}
+function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+
+async function unlockWithBiometrics() {
+  try {
+    const idB64 = localStorage.getItem('af_lock');
+    if (!idB64 || !window.PublicKeyCredential) return true;
+    const rawId = Uint8Array.from(atob(idB64), ch => ch.charCodeAt(0));
+    const cred = await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ type:'public-key', id: rawId, transports:['internal'] }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    return !!cred;
+  } catch(e) { return false; }
+}
+
+function showLockScreen(uid) {
+  hideLoading();
+  const nav = document.getElementById('bottom-nav-container');
+  if (nav) nav.innerHTML = '';
+  const c = document.getElementById('screen-container');
+  c.innerHTML = `<div class="screen no-nav splash-screen">
+    <div class="splash-logo">
+      <div class="logo-mark">AF</div>
+      <div class="logo-name">Arena<span>Flow</span></div>
+      <div class="logo-tagline">App protegido por biometria</div>
+    </div>
+    <div class="splash-illustration">🔐</div>
+    <div class="splash-actions">
+      <button class="btn btn-primary btn-lg btn-full" id="btn-unlock">Desbloquear</button>
+      <button class="btn btn-ghost btn-full" id="btn-lock-exit" style="color:var(--text-2);font-size:14px">Entrar com outra conta</button>
+    </div>
+  </div>`;
+  const tryUnlock = async () => {
+    const ok = await unlockWithBiometrics();
+    if (ok) { App._unlocked = true; App.loadUserProfile(uid); }
+    else showToast('Não foi possível verificar. Tente de novo.','warning');
+  };
+  document.getElementById('btn-unlock')?.addEventListener('click', tryUnlock);
+  document.getElementById('btn-lock-exit')?.addEventListener('click', () => {
+    confirmModal('Sair da conta?','Você precisará do e-mail e senha para entrar de novo.','🚪', async () => {
+      localStorage.removeItem('af_lock');
+      App._unlocked = false;
+      await auth.signOut();
+    });
+  });
+  tryUnlock();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1124,10 +1210,24 @@ function attachInvite() {
     if (!pwd) { showToast('Digite sua senha','error'); return; }
     if (code.length !== 6) { showToast('Código deve ter 6 caracteres','error'); return; }
     showLoading();
+    App._inviteFlow = true;
     try {
+      // 1º autentica (as Rules exigem login para consultar a arena)
+      let userCred;
+      try {
+        userCred = await auth.signInWithEmailAndPassword(email, pwd);
+      } catch(e) {
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials') {
+          userCred = await auth.createUserWithEmailAndPassword(email, pwd);
+        } else { throw e; }
+      }
+      const uid = userCred.user.uid;
+      // 2º agora sim busca a arena pelo código
       const arenaSnap = await db.collection('arenas')
         .where('inviteCode','==',code).limit(1).get();
       if (arenaSnap.empty) {
+        App._inviteFlow = false;
+        await auth.signOut().catch(()=>{});
         hideLoading();
         showToast('Código inválido ou expirado','error');
         return;
@@ -1137,21 +1237,16 @@ function attachInvite() {
       const arena    = arenaDoc.data();
       // Trava 1: só o e-mail cadastrado pelo responsável resgata o convite
       if ((arena.gestorEmail || '').toLowerCase() !== email.toLowerCase()) {
+        App._inviteFlow = false;
+        await auth.signOut().catch(()=>{});
         hideLoading();
         showToast('Este convite pertence a outro e-mail. Fale com o suporte ArenaFlow.','error');
         return;
       }
-      let userCred;
-      try {
-        userCred = await auth.signInWithEmailAndPassword(email, pwd);
-      } catch(e) {
-        if (e.code === 'auth/user-not-found') {
-          userCred = await auth.createUserWithEmailAndPassword(email, pwd);
-        } else { throw e; }
-      }
-      const uid = userCred.user.uid;
       // Trava 2: uso único — primeiro resgate grava gestorUid (Rules validam)
       if (arena.gestorUid && arena.gestorUid !== uid) {
+        App._inviteFlow = false;
+        await auth.signOut().catch(()=>{});
         hideLoading();
         showToast('Este convite já foi utilizado.','error');
         return;
@@ -1171,9 +1266,10 @@ function attachInvite() {
         title:'Bem-vindo, Gestor!',
         text:`Você foi vinculado à ${arena.name} com sucesso!`,
         actions:[{label:'Abrir painel', style:'btn-success', close:true}],
-        onClose: () => App.loadUserProfile(uid)
+        onClose: () => { App._inviteFlow = false; App.loadUserProfile(uid); }
       });
     } catch(e) {
+      App._inviteFlow = false;
       hideLoading();
       const msgs = {
         'auth/wrong-password':'Senha incorreta',
@@ -1246,7 +1342,7 @@ function screenStudentHome() {
    <div class="home-hero" style="${heroStyle}">
       <div class="flex items-center justify-between">
         <div class="home-greeting">
-          <small>${saud}, ${firstName}!</small>Bora pra areia? 🏖️
+          <small>${saud}, ${esc(firstName)}!</small>Bora pra areia? 🏖️
         </div>
         <div class="flex items-center" style="gap:14px">
           <div onclick="App.go('${SCREENS.S_NOTIFS}')" style="position:relative;font-size:24px;cursor:pointer;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-8px;background:var(--danger,#ff4d4d);color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 5px;min-width:16px;text-align:center"></span></div>
@@ -1407,7 +1503,7 @@ function liveStudentHome() {
           return `<div class="flex items-center gap-12" style="padding:12px 16px;border-bottom:1px solid var(--border);${i===top.length-1?'border:none':''}">
             <span style="font-size:20px">${medals[i]}</span>
             ${renderAvatar(x.data,'avatar-sm')}
-            <span class="t-h3 flex-1">${x.data.name||'—'}</span>
+            <span class="t-h3 flex-1">${esc(x.data.name)||'—'}</span>
             <span class="badge badge-primary">${x.val} aula${x.val>1?'s':''}</span>
           </div>`;
         }).join('')
@@ -1734,8 +1830,8 @@ function loadNotifications() {
         <div class="flex gap-10">
           <span style="font-size:22px">${icons[n.type]||'📣'}</span>
           <div class="flex-1">
-            <div class="t-h3">${n.title||''}</div>
-            <div class="t-sm t-muted" style="margin-top:2px">${n.text||''}</div>
+            <div class="t-h3">${esc(n.title)}</div>
+            <div class="t-sm t-muted" style="margin-top:2px">${esc(n.text)}</div>
             <div class="t-sm t-dim" style="margin-top:6px">${when}</div>
           </div>
           ${!n.read ? '<span style="width:9px;height:9px;border-radius:50%;background:var(--primary);margin-top:6px"></span>' : ''}
@@ -1975,18 +2071,18 @@ function loadRanking(type) {
         <div class="podium">
           ${top3.length >= 2 ? `<div class="podium-item podium-2">
             <div>${renderAvatar(top3[1].data,'avatar-md')}</div>
-            <div class="t-xs t-center" style="font-weight:600">${(top3[1].data.name||'').split(' ')[0]}</div>
+            <div class="t-xs t-center" style="font-weight:600">${esc((top3[1].data.name||'').split(' ')[0])}</div>
             <div class="podium-stand">2</div>
           </div>` : ''}
           ${top3.length >= 1 ? `<div class="podium-item podium-1">
             <div class="podium-crown">👑</div>
             <div>${renderAvatar(top3[0].data,'avatar-md')}</div>
-            <div class="t-sm t-center" style="font-weight:700">${(top3[0].data.name||'').split(' ')[0]}</div>
+            <div class="t-sm t-center" style="font-weight:700">${esc((top3[0].data.name||'').split(' ')[0])}</div>
             <div class="podium-stand">1</div>
           </div>` : ''}
           ${top3.length >= 3 ? `<div class="podium-item podium-3">
             <div>${renderAvatar(top3[2].data,'avatar-md')}</div>
-            <div class="t-xs t-center" style="font-weight:600">${(top3[2].data.name||'').split(' ')[0]}</div>
+            <div class="t-xs t-center" style="font-weight:600">${esc((top3[2].data.name||'').split(' ')[0])}</div>
             <div class="podium-stand">3</div>
           </div>` : ''}
         </div>
@@ -1998,7 +2094,7 @@ function loadRanking(type) {
               <span class="rank-num ${isMe ? 'me' : ''}">${i+4}</span>
               ${renderAvatar(data, 'avatar-sm', isMe ? 'avatar-ring' : '')}
               <div class="flex-1">
-                <div class="t-h3">${data.name||'—'} ${isMe?'<span style="color:var(--primary)">(você)</span>':''}</div>
+                <div class="t-h3">${esc(data.name)||'—'} ${isMe?'<span style="color:var(--primary)">(você)</span>':''}</div>
                 <div class="t-xs t-muted">${data.badges?.length||0} emblemas</div>
               </div>
               <span class="badge badge-primary">${x.val}</span>
@@ -2025,11 +2121,11 @@ function loadCommunityFeed(c) {
           <div class="flex items-center gap-10">
             <div class="avatar avatar-sm">${getInitials(f.authorName||'?')}</div>
             <div>
-              <span class="t-h3">${f.authorName||'—'}</span>
+              <span class="t-h3">${esc(f.authorName)||'—'}</span>
               <span class="t-xs t-muted" style="margin-left:6px">${timeAgo(f.createdAt)}</span>
             </div>
           </div>
-          <p class="t-body" style="margin-top:8px">${f.text||''}</p>
+          <p class="t-body" style="margin-top:8px">${esc(f.text)}</p>
           <div class="feed-reaction-row">
             ${emojis.map(em => {
               const count = (reactions[em]||[]).length;
@@ -2075,8 +2171,8 @@ function screenStudentProfile() {
           background:var(--primary);border-radius:50%;display:flex;align-items:center;
           justify-content:center;font-size:15px;border:2px solid var(--bg)">📷</div>
       </div>
-      <div class="t-h1">${p.name||'Aluno'}</div>
-      <div class="t-sm t-muted">${p.email||''}</div>
+      <div class="t-h1">${esc(p.name)||'Aluno'}</div>
+      <div class="t-sm t-muted">${esc(p.email)}</div>
       ${arenaBtn}
       <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;flex-wrap:wrap">
         ${nivelBadge}${tipoBadge}
@@ -2103,7 +2199,7 @@ function screenStudentProfile() {
       <div class="settings-label">Conta</div>
       <div class="settings-item" onclick="toggleBiometric()">
         <div class="settings-icon si-blue">🔐</div>
-        <div class="flex-1"><div class="t-h3">Biometria</div><div class="t-xs t-muted">Login com digital ou face ID</div></div>
+        <div class="flex-1"><div class="t-h3">Bloqueio por biometria</div><div class="t-xs t-muted">Pede digital ou Face ID ao abrir o app</div></div>
         <span class="settings-chevron">›</span>
       </div>
       <div class="settings-item" onclick="App.go('${SCREENS.FORGOT}')">
@@ -2209,44 +2305,43 @@ window.showBadgeDetail = function(badgeId, isEarned) {
     }
   };
 };
-window.toggleBiometric = function() {
-  const stored = localStorage.getItem('af_biometric');
-  if (stored) {
-    confirmModal('Desativar Biometria?','Você precisará usar e-mail e senha para entrar.','🔐', () => {
-      localStorage.removeItem('af_biometric');
-      showToast('Biometria desativada','warning');
+window.toggleBiometric = async function() {
+  if (localStorage.getItem('af_lock')) {
+    confirmModal('Desativar bloqueio?','O app abrirá sem pedir sua digital ou Face ID.','🔐', () => {
+      localStorage.removeItem('af_lock');
+      showToast('Bloqueio por biometria desativado','warning');
     });
-  } else {
-    showModal({
-      icon:'🔐', iconBg:'var(--primary-dim)',
-      title:'Ativar Biometria',
-      text:'Para ativar, confirme sua senha abaixo:',
-      html:`<div style="margin-top:16px"><input class="input" id="bio-pwd" type="password" placeholder="Sua senha atual"></div>`,
-      actions:[
-        {label:'Cancelar', style:'btn-outline', close:true},
-        {label:'Ativar', style:'btn-primary', id:'activate-bio', close:true}
-      ]
-    });
-    window._modalCallbacks['activate-bio'] = async () => {
-      const pwd = document.getElementById('bio-pwd')?.value;
-      if (!pwd) return;
-      try {
-        await auth.currentUser.reauthenticateWithCredential(
-          firebase.auth.EmailAuthProvider.credential(App.user.email, pwd)
-        );
-        const data = btoa(JSON.stringify({email:App.user.email, password:pwd}));
-        localStorage.setItem('af_biometric', data);
-        showToast('Biometria ativada com sucesso! ✅','success');
-      } catch(e) {
-        showToast('Senha incorreta','error');
+    return;
+  }
+  if (!window.PublicKeyCredential) { showToast('Biometria não disponível neste dispositivo','warning'); return; }
+  try {
+    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    if (!available) { showToast('Biometria não disponível neste dispositivo','warning'); return; }
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rp: { name: 'ArenaFlow' },
+        user: {
+          id: new TextEncoder().encode(App.user?.uid || 'user'),
+          name: App.user?.email || 'usuario',
+          displayName: App.profile?.name || 'Usuário'
+        },
+        pubKeyCredParams: [{type:'public-key', alg:-7},{type:'public-key', alg:-257}],
+        authenticatorSelection: { authenticatorAttachment:'platform', userVerification:'required' },
+        timeout: 60000
       }
-    };
+    });
+    localStorage.setItem('af_lock', btoa(String.fromCharCode(...new Uint8Array(cred.rawId))));
+    showToast('Bloqueio por biometria ativado! 🔐','success');
+  } catch(e) {
+    showToast('Não foi possível ativar a biometria','error');
   }
 };
 window.logoutUser = function() {
   confirmModal('Sair da conta?','Você precisará fazer login novamente.','🚪', async () => {
+    localStorage.removeItem('af_lock');
+    App._unlocked = false;
     await auth.signOut();
-    localStorage.removeItem('af_biometric');
   });
 };
 
@@ -2260,7 +2355,7 @@ function screenAdminHome() {
     <div class="home-hero" style="${(a.coverBase64||a.photoBase64) ? 'background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.92)),url(' + JSON.stringify(a.coverBase64||a.photoBase64) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);'}">
       <div class="flex items-center justify-between">
         <div class="home-greeting">
-          <small>Painel da Arena</small>${a.name||'Arena'} 🏟️
+          <small>Painel da Arena</small>${esc(a.name)||'Arena'} 🏟️
         </div>
         <div class="avatar avatar-md" style="background:var(--accent-dim);color:var(--accent)"
           onclick="App.go('${SCREENS.A_SETTINGS}')">${getInitials(g.name||'A')}</div>
@@ -2494,7 +2589,7 @@ function renderAttendanceMode(clsId, cls) {
             return `<div class="attend-row" id="att-${d.id}" onclick="toggleAttendance('${d.id}')"
               style="cursor:pointer;border:1px solid var(--success);border-radius:12px;margin-bottom:8px">
               <div class="avatar avatar-sm">${getInitials(e.studentName||'?')}</div>
-              <div class="flex-1"><div class="t-h3">${e.studentName||'—'}</div></div>
+              <div class="flex-1"><div class="t-h3">${esc(e.studentName)||'—'}</div></div>
               <span id="att-ico-${d.id}" style="font-size:22px">✅</span>
             </div>`;
           }).join('')}
@@ -2641,7 +2736,7 @@ function loadClassEnrollments(clsId, cls) {
             <div class="flex items-center gap-12 flex-1">
               <div class="avatar avatar-sm">${getInitials(e.studentName||'?')}</div>
               <div>
-                <div class="t-h3">${e.studentName||'—'}</div>
+                <div class="t-h3">${esc(e.studentName)||'—'}</div>
                 <span class="status-pill ${STATUS_CSS[e.status]||''}">${STATUS_LABELS[e.status]||e.status}</span>
               </div>
             </div>
@@ -2656,7 +2751,7 @@ function loadClassEnrollments(clsId, cls) {
               <span class="rank-num">${i+1}</span>
               <div class="avatar avatar-sm">${getInitials(e.studentName||'?')}</div>
               <div class="flex-1">
-                <div class="t-h3">${e.studentName||'—'}</div>
+                <div class="t-h3">${esc(e.studentName)||'—'}</div>
               </div>
               <button class="btn btn-success btn-sm" onclick="promoteWaitlist('${clsId}','${d.id}')">Chamar</button>
             </div>`;
@@ -2949,23 +3044,44 @@ window.removeEnrollment = async function(clsId, studentDocId) {
 window.sendConfirmations = function(clsId) {
   showModal({
     icon:'📱', iconBg:'var(--success-dim)',
-    title:'Enviar via WhatsApp',
-    text:'Isso enviará mensagens de confirmação para todos os inscritos desta aula.',
+    title:'Mensagem para o grupo',
+    text:'Vou montar a mensagem de confirmação com a lista de inscritos, pronta para você enviar no grupo do WhatsApp da arena.',
     actions:[
       {label:'Cancelar', style:'btn-outline', close:true},
-      {label:'Enviar agora', style:'btn-success', id:'send-wa', close:true}
+      {label:'Montar mensagem', style:'btn-success', id:'send-wa', close:true}
     ]
   });
   window._modalCallbacks['send-wa'] = async () => {
     showLoading();
     try {
-      const fn = firebase.functions();
-      await fn.httpsCallable('sendClassConfirmations')({arenaId:App.arenaId, clsId});
+      const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
+      const [clsSnap, enrSnap] = await Promise.all([clsRef.get(), clsRef.collection('enrollments').get()]);
+      const cls = clsSnap.data() || {};
+      const confirmados = enrSnap.docs
+        .map(d => d.data())
+        .filter(e => e.status !== 'waitlist' && e.status !== 'cancelled')
+        .map(e => '✅ ' + (e.studentName || 'Aluno'));
+      const fila = enrSnap.docs
+        .map(d => d.data())
+        .filter(e => e.status === 'waitlist')
+        .sort((a,b) => (a.waitlistPosition||99) - (b.waitlistPosition||99))
+        .map((e,i) => `${i+1}º ${e.studentName || 'Aluno'}`);
+      const [y,m,dd] = (cls.dateStr||'').split('-');
+      let msg = `🏐 *${App.arena?.name || 'Arena'} — Confirmação de aula*\n`;
+      msg += `📅 ${dd}/${m} às ${cls.startTime}${cls.modality ? ' • ' + cls.modality : ''}\n\n`;
+      msg += `*Confirmados (${confirmados.length}):*\n${confirmados.join('\n') || '—'}\n`;
+      if (fila.length) msg += `\n*Fila de espera:*\n${fila.join('\n')}\n`;
+      msg += `\nNão vai poder vir? Cancela no app pra liberar a vaga de quem tá na fila! 🙏`;
       hideLoading();
-      showToast('Mensagens enviadas!','success');
+      if (navigator.share) {
+        await navigator.share({ text: msg }).catch(()=>{});
+      } else {
+        await navigator.clipboard.writeText(msg);
+        showToast('Mensagem copiada! Cole no grupo do WhatsApp 📋','success');
+      }
     } catch(e) {
       hideLoading();
-      showToast('Configure o WhatsApp nas configurações','warning');
+      showToast('Erro ao montar a mensagem','error');
     }
   };
 };
@@ -2974,7 +3090,7 @@ window.sendConfirmations = function(clsId) {
 //  ADMIN — CREATE CLASS
 // ═══════════════════════════════════════════════════════════
 function screenAdminCreate() {
-  const today = new Date().toISOString().slice(0,10);
+  const today = toLocalDateStr();
   const settings = App.arena?.settings || {};
   return `<div class="screen">
     <div class="topbar">
@@ -3184,7 +3300,7 @@ function renderStudentList(students) {
     return `<div class="arena-row" onclick="App.go('${SCREENS.A_STUDENT}',{uid:'${s.id}'})">
       ${renderAvatar(s, 'avatar-md')}
       <div class="flex-1">
-        <div class="t-h3">${s.name||'—'}</div>
+        <div class="t-h3">${esc(s.name)||'—'}</div>
         <div class="t-xs t-muted">${s.totalClasses||0} aulas • ${s.badges?.length||0} emblemas</div>
         <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
           ${nivelBadge}${tipoBadge}
@@ -3257,7 +3373,7 @@ function liveAdminStudentDetail() {
     body.innerHTML = `
       <div class="profile-header">
         ${renderAvatar(s, 'avatar-xl')}
-        <div class="t-h1">${s.name||'—'}</div>
+        <div class="t-h1">${esc(s.name)||'—'}</div>
         <span class="badge ${statusMap[s.status||'active']}">${s.status==='active'?'Ativo':s.status==='blocked'?'Bloqueado':'Inativo'}</span>
         <div class="profile-stats" style="margin-top:16px">
           <div class="profile-stat"><div class="profile-stat-val">${s.totalClasses||0}</div><div class="profile-stat-lbl">Total</div></div>
@@ -3468,7 +3584,7 @@ function screenAdminSettings() {
             ? `<img src="${a.coverBase64 || a.photoBase64}" style="width:100%;height:100%;object-fit:cover">`
             : `<div style="position:absolute;inset:0;background:linear-gradient(160deg,#993C1D,#4A1B0C)"></div>
                <div style="position:absolute;top:18px;right:34px;width:36px;height:36px;border-radius:50%;background:#FAC775"></div>`}
-          <div style="position:absolute;bottom:8px;left:12px;font-size:12px;color:#FAECE7;font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.6)">${a.name||'Sua arena'}</div>
+          <div style="position:absolute;bottom:8px;left:12px;font-size:12px;color:#FAECE7;font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.6)">${esc(a.name)||'Sua arena'}</div>
         </div>
         <input type="file" id="cover-file" accept="image/*" style="display:none" onchange="uploadArenaCover(event)">
         <button class="btn btn-outline btn-full" onclick="document.getElementById('cover-file').click()">📷 Trocar foto da capa</button>
@@ -3499,8 +3615,8 @@ function screenAdminSettings() {
         </div>
         ${(a.staffEmails||[]).map(em => `
           <div class="flex items-center gap-8" style="margin-bottom:8px;background:var(--surface-2);border-radius:10px;padding:10px 12px">
-            <span class="flex-1 t-sm">${em}</span>
-            <button class="btn btn-outline btn-sm" onclick="removeStaffEmail('${em}')">Remover</button>
+            <span class="flex-1 t-sm">${esc(em)}</span>
+            <button class="btn btn-outline btn-sm" data-em="${esc(em)}" onclick="removeStaffEmail(this.dataset.em)">Remover</button>
           </div>`).join('') || '<div class="t-sm t-dim" style="margin-bottom:8px">Nenhum funcionário ainda</div>'}
         <div class="flex gap-8" style="margin-top:8px">
           <input class="input flex-1" id="staff-email" type="email" placeholder="email@funcionario.com">
@@ -3688,9 +3804,9 @@ window.editArenaInfo = function() {
     icon:'🏟️', iconBg:'var(--primary-dim)',
     title:'Informações da Arena',
     html:`<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">
-      <input class="input" id="edit-arena-name" placeholder="Nome da arena" value="${a.name||''}">
-      <input class="input" id="edit-arena-city" placeholder="Cidade" value="${a.city||''}">
-      <input class="input" id="edit-arena-addr" placeholder="Endereço" value="${a.address||''}">
+      <input class="input" id="edit-arena-name" placeholder="Nome da arena" value="${esc(a.name)||''}">
+      <input class="input" id="edit-arena-city" placeholder="Cidade" value="${esc(a.city)||''}">
+      <input class="input" id="edit-arena-addr" placeholder="Endereço" value="${esc(a.address)}">
     </div>`,
     actions:[
       {label:'Cancelar', style:'btn-outline', close:true},
@@ -3755,8 +3871,8 @@ function liveSAHome() {
       if (a.paymentStatus==='overdue') overdue++;
       totalStudents += a.studentCount||0;
       totalMRR += a.status==='active' ? (a.planValue||199) : 0;
-      if (a.paymentStatus==='overdue') alerts.push({type:'danger', msg:`${a.name} — inadimplente há ${a.overdueDays||1} dias`});
-      if (a.status==='trial') alerts.push({type:'warning', msg:`${a.name} — trial expira em breve`});
+      if (a.paymentStatus==='overdue') alerts.push({type:'danger', msg:`${esc(a.name)} — inadimplente há ${a.overdueDays||1} dias`});
+      if (a.status==='trial') alerts.push({type:'warning', msg:`${esc(a.name)} — trial expira em breve`});
     });
 
     const mrr = document.getElementById('sa-mrr');
@@ -3785,8 +3901,8 @@ function liveSAHome() {
       return `<div class="arena-row" onclick="App.go('${SCREENS.SA_ARENA}',{arenaId:'${d.id}'})">
         <div class="arena-icon">🏟️</div>
         <div class="flex-1">
-          <div class="t-h3">${a.name||'—'}</div>
-          <div class="t-xs t-muted">${a.city||'—'} • R$${a.planValue||199}/mês</div>
+          <div class="t-h3">${esc(a.name)||'—'}</div>
+          <div class="t-xs t-muted">${esc(a.city)||'—'} • R$${a.planValue||199}/mês</div>
         </div>
         <span class="badge ${statusMap[a.status]||'badge-muted'}">${a.status||'—'}</span>
       </div>`;
@@ -3840,8 +3956,8 @@ function renderArenasList(arenas) {
           : `<span style="font-size:20px;display:flex;align-items:center;justify-content:center;height:100%">🏟️</span>`}
       </div>
       <div class="flex-1">
-        <div class="t-h3">${a.name||'—'}</div>
-        <div class="t-xs t-muted">${a.city||'—'} • ${a.gestorName||'—'}</div>
+        <div class="t-h3">${esc(a.name)||'—'}</div>
+        <div class="t-xs t-muted">${esc(a.city)||'—'} • ${esc(a.gestorName)||'—'}</div>
       </div>
       <div class="flex flex-col items-end gap-4">
         <span class="badge ${statusMap[a.status]||'badge-muted'}">${statusLabel[a.status]||a.status}</span>
@@ -3896,12 +4012,12 @@ function liveAdminStudents() {
             <div class="flex items-center gap-12" style="margin-bottom:16px">
               <div class="arena-icon" style="width:56px;height:56px;font-size:26px;border-radius:14px">🏟️</div>
               <div>
-                <div class="t-h2">${a.name||'—'}</div>
-                <div class="t-sm t-muted">${a.city||'—'}${a.address?` • ${a.address}`:''}</div>
+                <div class="t-h2">${esc(a.name)||'—'}</div>
+                <div class="t-sm t-muted">${esc(a.city)||'—'}${a.address?` • ${esc(a.address)}`:''}</div>
               </div>
             </div>
             <div class="grid-2">
-              <div><div class="t-label t-dim">Gestor</div><div class="t-h3" style="margin-top:4px">${a.gestorName||'—'}</div></div>
+              <div><div class="t-label t-dim">Gestor</div><div class="t-h3" style="margin-top:4px">${esc(a.gestorName)||'—'}</div></div>
               <div><div class="t-label t-dim">Status</div><div style="margin-top:4px"><span class="badge ${statusMap[a.status]||'badge-muted'}">${statusLabel[a.status]||'—'}</span></div></div>
               <div><div class="t-label t-dim">Plano</div><div class="t-h3" style="margin-top:4px">R$ ${a.planValue||199}/mês</div></div>
               <div><div class="t-label t-dim">Alunos</div><div class="t-h3" style="margin-top:4px">${a.studentCount||0}</div></div>
@@ -3910,8 +4026,8 @@ function liveAdminStudents() {
 
           <div class="card" style="margin-bottom:16px">
             <div class="t-label t-dim" style="margin-bottom:10px">👤 Dono da arena</div>
-            <div class="t-h3">${a.gestorName||'—'}</div>
-            <div class="t-sm t-muted">${a.gestorEmail||'—'}${a.gestorPhone?` • ${a.gestorPhone}`:''}</div>
+            <div class="t-h3">${esc(a.gestorName)||'—'}</div>
+            <div class="t-sm t-muted">${esc(a.gestorEmail)||'—'}${a.gestorPhone?` • ${esc(a.gestorPhone)}`:''}</div>
             <div class="flex items-center gap-8" style="margin-top:10px">
               <span class="badge ${a.gestorUid?'badge-success':'badge-warning'}">${a.gestorUid?'✅ Convite resgatado':'⏳ Aguardando resgate'}</span>
               ${!a.gestorUid ? `<span class="t-sm t-dim">Código: <b>${a.inviteCode||'—'}</b></span>` : ''}
@@ -3920,7 +4036,7 @@ function liveAdminStudents() {
               <button class="btn btn-outline btn-sm flex-1" onclick="changeArenaGestor('${snap.id}')">✏️ Trocar dono</button>
               ${!a.gestorUid ? `<button class="btn btn-outline btn-sm flex-1" onclick="regenArenaInvite('${snap.id}')">🔄 Novo código</button>` : ''}
             </div>
-            ${(a.staffEmails||[]).length ? `<div class="t-sm t-dim" style="margin-top:12px">Equipe: ${(a.staffEmails||[]).join(', ')}</div>` : ''}
+            ${(a.staffEmails||[]).length ? `<div class="t-sm t-dim" style="margin-top:12px">Equipe: ${(a.staffEmails||[]).map(esc).join(', ')}</div>` : ''}
           </div>
 
           <div class="flex gap-10">
@@ -3970,7 +4086,7 @@ window.changeArenaGestor = async function(arenaId) {
         <input class="input" id="ng-email" type="email" value=""></div>
       <div class="field" style="margin-top:10px"><label>Telefone</label>
         <input class="input" id="ng-phone" value=""></div>
-      <div class="t-sm t-dim" style="margin-top:12px">⚠️ O dono atual (${a.gestorName||a.gestorEmail||'—'}) perde o acesso de gestão. Um novo código de convite será gerado.</div>
+      <div class="t-sm t-dim" style="margin-top:12px">⚠️ O dono atual (${esc(a.gestorName||a.gestorEmail)||'—'}) perde o acesso de gestão. Um novo código de convite será gerado.</div>
     </div>`,
     actions:[
       {label:'Cancelar', style:'btn-outline', close:true},
@@ -4161,7 +4277,7 @@ function liveSAFinancial() {
         const psb = {paid:'badge-success', pending:'badge-warning', overdue:'badge-danger'}[ps]||'badge-muted';
         return `<div class="arena-row" style="cursor:default">
           <div class="flex-1">
-            <div class="t-h3">${a.name||'—'}</div>
+            <div class="t-h3">${esc(a.name)||'—'}</div>
             <div class="t-xs t-muted">R$${a.planValue||199}/mês</div>
           </div>
           <span class="badge ${psb}">${ps==='paid'?'Em dia':ps==='overdue'?'Atrasado':'Pendente'}</span>
