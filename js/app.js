@@ -744,6 +744,7 @@ function attachSplash() {
  document.getElementById('btn-login')?.addEventListener('click', () => App.go(SCREENS.LOGIN));
   document.getElementById('btn-register')?.addEventListener('click', () => App.go(SCREENS.REGISTER));
   document.getElementById('btn-gestor')?.addEventListener('click', () => App.go(SCREENS.INVITE));
+  startAuthBg();
   const bi = document.getElementById('btn-install');
   if (bi && !isStandalone()) bi.style.display = '';
   bi?.addEventListener('click', () => promptInstall());
