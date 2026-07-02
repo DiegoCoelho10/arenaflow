@@ -721,7 +721,7 @@ function attachListeners(screen) {
 //  SPLASH SCREEN
 // ═══════════════════════════════════════════════════════════
 function screenSplash() {
-  return `<div class="screen no-nav splash-screen">
+  return `<div class="screen no-nav splash-screen has-auth-bg">${authBgHTML()}
     <div class="splash-logo">
       <div class="logo-mark">AF</div>
       <div class="logo-name">Arena<span>Flow</span></div>
@@ -753,7 +753,7 @@ function attachSplash() {
 //  LOGIN SCREEN
 // ═══════════════════════════════════════════════════════════
 function screenLogin() {
-  return `<div class="screen no-nav auth-screen">
+  return `<div class="screen no-nav auth-screen has-auth-bg">${authBgHTML()}
     <div class="auth-header">
       <button class="back-btn" onclick="App.go('${SCREENS.SPLASH}')">←</button>
       <br><br>
@@ -784,6 +784,7 @@ function screenLogin() {
   </div>`;
 }
 function attachLogin() {
+  startAuthBg();
   const btnSubmit = document.getElementById('btn-login-submit');
   const toggle = document.getElementById('pwd-toggle');
   const pwd = document.getElementById('login-pwd');
@@ -818,6 +819,29 @@ function attachLogin() {
   pwd?.addEventListener('keydown', e => {
     if (e.key === 'Enter') btnSubmit?.click();
   });
+}
+
+const AUTH_BGS = ['imgs/bg1.jpg','imgs/bg2.jpg','imgs/bg3.jpg'];
+
+function authBgHTML() {
+  return `<div class="auth-bg">${AUTH_BGS.map((u,i) =>
+    `<div class="auth-bg-layer" data-bg="${i}" style="background-image:url('${u}')"></div>`
+  ).join('')}</div>`;
+}
+
+function startAuthBg() {
+  const layers = document.querySelectorAll('.auth-bg-layer');
+  if (!layers.length) return;
+  let idx = 0;
+  // primeira imagem entra num fade suave assim que carregar
+  const first = new Image();
+  first.onload = () => layers[0] && layers[0].classList.add('active');
+  first.src = AUTH_BGS[0];
+  const timer = setInterval(() => {
+    idx = (idx + 1) % layers.length;
+    layers.forEach((l,i) => l.classList.toggle('active', i === idx));
+  }, 7000);
+  App.unsubscribers.push(() => clearInterval(timer));
 }
 
 window.promptInstall = async function() {
@@ -936,7 +960,7 @@ let regStep = 1;
 
 function screenRegister() {
   regStep = 1; regData = {};
-  return `<div class="screen no-nav auth-screen">
+  return `<div class="screen no-nav auth-screen has-auth-bg">${authBgHTML()}
     <div class="auth-header">
       <button class="back-btn" id="reg-back">←</button>
       <br><br>
@@ -1021,6 +1045,7 @@ function regFormStep3() {
 }
 
 function attachRegister() {
+  startAuthBg();
   const stepTitles = ['','Qual é o seu nome?','Sobre você','Crie sua senha'];
   const stepSubs   = ['','Etapa 1 de 3 — Dados pessoais','Etapa 2 de 3 — Perfil','Etapa 3 de 3 — Segurança'];
 
@@ -1156,7 +1181,7 @@ async function submitRegister() {
 //  TELA DE CÓDIGO DE CONVITE (Gestor)
 // ═══════════════════════════════════════════════════════════
 function screenInvite() {
-  return `<div class="screen no-nav auth-screen">
+  return `<div class="screen no-nav auth-screen has-auth-bg">${authBgHTML()}
     <div class="auth-header">
       <button class="back-btn" onclick="App.go('${SCREENS.SPLASH}')">←</button>
       <br><br>
@@ -1197,6 +1222,7 @@ function screenInvite() {
 }
 
 function attachInvite() {
+  startAuthBg();
   document.getElementById('inv-code')?.addEventListener('input', function() {
     this.value = this.value.toUpperCase();
   });
@@ -1281,7 +1307,7 @@ function attachInvite() {
   });
 }
 function screenForgot() {
-  return `<div class="screen no-nav auth-screen">
+  return `<div class="screen no-nav auth-screen has-auth-bg">${authBgHTML()}
     <div class="auth-header">
       <button class="back-btn" onclick="App.go('${SCREENS.LOGIN}')">←</button>
       <br><br>
@@ -1305,6 +1331,7 @@ function screenForgot() {
   </div>`;
 }
 function attachForgot() {
+  startAuthBg();
   document.getElementById('btn-forgot')?.addEventListener('click', async () => {
     const email = document.getElementById('forgot-email')?.value.trim();
     if (!validateEmail(email)) { showToast('Digite um e-mail válido', 'error'); return; }
