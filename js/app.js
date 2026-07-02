@@ -2451,66 +2451,140 @@ function liveAdminHome() {
 //  ADMIN — SCHEDULE
 // ═══════════════════════════════════════════════════════════
 function screenAdminSchedule() {
-  const days = getWeekDays();
   return `<div class="screen">
     <div class="topbar"><span class="topbar-title">📅 Agenda</span></div>
-    <div class="week-strip">
-      ${days.map((d,i) => `<div class="day-pill ${i===0?'active':''}" data-date="${d.iso}" onclick="adminSelectDay('${d.iso}',this)">
-        <span class="day-name">${d.name}</span>
-        <span class="day-num">${d.num}</span>
-        <div class="day-dot"></div>
-      </div>`).join('')}
+    <div class="chip-row" id="mg-chips">
+      <button class="chip active" onclick="mgSetFilter('today',this)">Hoje</button>
+      <button class="chip" onclick="mgSetFilter('week',this)">Semana</button>
+      <button class="chip" onclick="mgSetFilter('upcoming',this)">Próximas</button>
+      <button class="chip" onclick="mgSetFilter('past',this)">Passadas</button>
+      <button class="chip" onclick="mgSetFilter('cancelled',this)">Canceladas</button>
     </div>
-    <div id="admin-classes-list" style="padding:0 20px;display:flex;flex-direction:column;gap:10px">
+    <div id="admin-classes-list" style="padding:0 20px 90px;display:flex;flex-direction:column;gap:10px">
       <div class="empty-state"><div class="empty-emoji">⌛</div></div>
     </div>
     <button class="fab" onclick="App.go('${SCREENS.A_CREATE}')">＋</button>
   </div>`;
 }
-window.adminSelectDay = function(date, el) {
-  document.querySelectorAll('.day-pill').forEach(d => d.classList.remove('active'));
-  el.classList.add('active');
-  loadAdminDayClasses(date);
-};
+
+let _mgClasses = null;
+let _mgFilter  = 'today';
 
 function liveAdminSchedule() {
-  const days = getWeekDays();
-  loadAdminDayClasses(days[0].iso);
+  _mgFilter = 'today';
+  _mgClasses = null;
+  mgLoadClasses();
 }
 
-function loadAdminDayClasses(dateStr) {
+async function mgLoadClasses() {
   const list = document.getElementById('admin-classes-list');
   if (!list || !App.arenaId) return;
-  list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
- db.collection('arenas').doc(App.arenaId).collection('classes')
-    .where('dateStr','==',dateStr).get().then(snap => {
-      const visiveis = snap.docs.filter(d => d.data().status !== 'cancelled');
-      const sortedDocs = visiveis.sort((a,b) => a.data().startTime.localeCompare(b.data().startTime));
-      if (!visiveis.length) {
-        list.innerHTML = `<div class="empty-state" style="padding:32px 0"><div class="empty-emoji">📭</div><div class="empty-title">Sem aulas neste dia</div><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="App.go('${SCREENS.A_CREATE}')">＋ Criar aula</button></div>`;
-        return;
-      }
-      list.innerHTML = sortedDocs.map(d => {
-        const c = d.data();
-        const pct = Math.round((c.spotsUsed||0)/(c.maxSpots||1)*100);
-        return `<div class="class-card status-${getClassStatus(c)}" onclick="App.go('${SCREENS.A_CLASS}',{clsId:'${d.id}'})">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="t-h3">${c.modality||'Aula'}</div>
-              <div class="t-sm t-muted">${c.startTime} – ${c.endTime}${c.court?' • '+c.court:''}</div>
-              ${c.nivel ? `<span class="badge ${c.nivel==='iniciante'?'badge-success':c.nivel==='intermediario'?'badge-warning':c.nivel==='avancado'?'badge-danger':c.nivel==='feminino'?'badge-accent':'badge-muted'} badge-sm" style="margin-top:4px">${c.nivel==='iniciante'?'🟢':c.nivel==='intermediario'?'🟡':c.nivel==='avancado'?'🔴':c.nivel==='feminino'?'🩷':'🟠'} ${c.nivel}</span>` : ''}
-            </div>
-            <div>
-              <div class="t-h2 t-center" style="color:var(--primary)">${c.spotsUsed||0}/${c.maxSpots}</div>
-              <div class="t-xs t-muted">${c.waitlist?.length||0} fila</div>
-            </div>
-          </div>
-          <div class="spots-bar" style="margin-top:8px">
-            <div class="spots-fill ${pct>=90?'low':pct>=60?'medium':'high'}" style="width:${Math.min(pct,100)}%"></div>
-          </div>
-        </div>`;
-      }).join('');
-    });
+  try {
+    const snap = await db.collection('arenas').doc(App.arenaId)
+      .collection('classes').orderBy('dateStr','desc').limit(400).get();
+    _mgClasses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    mgRender();
+  } catch(e) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⚠️</div>
+      <div class="empty-title">Erro ao carregar aulas</div></div>`;
+  }
+}
+
+window.mgSetFilter = function(f, el) {
+  _mgFilter = f;
+  document.querySelectorAll('#mg-chips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  mgRender();
+};
+
+function mgRender() {
+  const list = document.getElementById('admin-classes-list');
+  if (!list || !_mgClasses) return;
+  const hoje = toLocalDateStr();
+  const f7 = new Date(); f7.setDate(f7.getDate() + 6);
+  const fimSemana = toLocalDateStr(f7);
+
+  let itens = _mgClasses.filter(c => {
+    const cancelada = c.status === 'cancelled';
+    if (_mgFilter === 'cancelled') return cancelada;
+    if (cancelada) return false;
+    if (_mgFilter === 'today')    return c.dateStr === hoje;
+    if (_mgFilter === 'week')     return c.dateStr >= hoje && c.dateStr <= fimSemana;
+    if (_mgFilter === 'upcoming') return c.dateStr >= hoje;
+    if (_mgFilter === 'past')     return c.dateStr < hoje;
+    return true;
+  });
+
+  // Futuras em ordem cronológica; passadas/canceladas das mais recentes para trás
+  const desc = (_mgFilter === 'past' || _mgFilter === 'cancelled') ? -1 : 1;
+  itens.sort((a,b) => desc * ((a.dateStr + (a.startTime||'')).localeCompare(b.dateStr + (b.startTime||''))));
+
+  if (!itens.length) {
+    const vazios = {
+      today:     ['🌤️','Nenhuma aula hoje'],
+      week:      ['📭','Sem aulas nesta semana'],
+      upcoming:  ['📭','Nenhuma aula futura'],
+      past:      ['🕰️','Nenhuma aula passada'],
+      cancelled: ['✨','Nenhuma aula cancelada']
+    };
+    const [emo, txt] = vazios[_mgFilter] || vazios.upcoming;
+    list.innerHTML = `<div class="empty-state" style="padding:32px 0">
+      <div class="empty-emoji">${emo}</div><div class="empty-title">${txt}</div>
+      ${_mgFilter !== 'past' && _mgFilter !== 'cancelled'
+        ? `<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="App.go('${SCREENS.A_CREATE}')">＋ Criar aula</button>` : ''}
+    </div>`;
+    return;
+  }
+
+  // Agrupar por data
+  const grupos = {};
+  itens.forEach(c => { (grupos[c.dateStr] = grupos[c.dateStr] || []).push(c); });
+  const fmtDia = ds => {
+    const [y,m,d] = (ds||'').split('-');
+    const wd = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][new Date(ds + 'T12:00:00').getDay()] || '';
+    return `${wd} • ${d}/${m}` + (ds === hoje ? ' • <span style="color:var(--primary)">HOJE</span>' : '');
+  };
+
+  list.innerHTML = Object.keys(grupos).map(ds => `
+    <div class="t-xs t-muted" style="margin-top:10px;font-weight:700;letter-spacing:.5px">${fmtDia(ds)}</div>
+    ${grupos[ds].map(c => mgCard(c, hoje)).join('')}
+  `).join('');
+}
+
+function mgCard(c, hoje) {
+  const cancelada = c.status === 'cancelled';
+  const concluida = c.status === 'done';
+  const pct = Math.round((c.spotsUsed||0)/(c.maxSpots||1)*100);
+  const nivelBadge = c.nivel
+    ? `<span class="badge ${c.nivel==='iniciante'?'badge-success':c.nivel==='intermediario'?'badge-warning':c.nivel==='avancado'?'badge-danger':c.nivel==='feminino'?'badge-accent':'badge-muted'} badge-sm">${c.nivel==='iniciante'?'🟢':c.nivel==='intermediario'?'🟡':c.nivel==='avancado'?'🔴':c.nivel==='feminino'?'🩷':'🟠'} ${c.nivel}</span>`
+    : '';
+  const stBadge = cancelada ? '<span class="badge badge-danger badge-sm">Cancelada</span>'
+    : concluida ? '<span class="badge badge-muted badge-sm">✅ Concluída</span>'
+    : '';
+  const acoes = (cancelada || concluida) ? '' : `
+    <div class="flex" style="gap:8px;margin-top:10px" onclick="event.stopPropagation()">
+      ${c.dateStr === hoje ? `<button class="btn btn-success btn-sm flex-1" onclick="openAttendanceMode('${c.id}')">📋 Chamada</button>` : ''}
+      <button class="btn btn-outline btn-sm flex-1" onclick="editClass('${c.id}')">✏️ Editar</button>
+      <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="adminCancelClass('${c.id}')">🗑️</button>
+    </div>`;
+
+  return `<div class="class-card status-${getClassStatus(c)}"${cancelada ? ' style="opacity:.55"' : ''} onclick="App.go('${SCREENS.A_CLASS}',{clsId:'${c.id}'})">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="t-h3">${esc(c.modality)||'Aula'} ${c.seriesId ? '🔁' : ''}</div>
+        <div class="t-sm t-muted">${c.startTime||''} – ${c.endTime||''}${c.court ? ' • ' + esc(c.court) : ''}</div>
+        <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">${nivelBadge}${stBadge}</div>
+      </div>
+      <div>
+        <div class="t-h2 t-center" style="color:var(--primary)">${c.spotsUsed||0}/${c.maxSpots}</div>
+        <div class="t-xs t-muted t-center">${c.waitlist?.length||0} fila</div>
+      </div>
+    </div>
+    ${(cancelada || concluida) ? '' : `<div class="spots-bar" style="margin-top:8px">
+      <div class="spots-fill ${pct>=90?'low':pct>=60?'medium':'high'}" style="width:${Math.min(pct,100)}%"></div>
+    </div>`}
+    ${acoes}
+  </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════
