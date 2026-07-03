@@ -837,3 +837,12 @@ select.input { appearance: none; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .auth-bg-layer { animation: none; }
 }
+
+
+/* ── LOGO EM IMAGEM (nova identidade sunset) ──────────────── */
+.logo-img {
+  width: 80px; height: 80px; border-radius: 24px;
+  object-fit: cover; display: inline-block;
+  box-shadow: 0 0 40px var(--primary-glow), 0 20px 40px rgba(0,0,0,0.4);
+}
+.logo-img-sm { width: 52px; height: 52px; border-radius: 16px; }
