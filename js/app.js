@@ -504,7 +504,7 @@ function confirmModal(title, text, icon, onConfirm) {
 }
 
 function confetti() {
-  const colors = ['#3D6EFF','#FF5E1A','#00D97E','#FFB020','#FF4757','#6B4EFF'];
+  const colors = ['#F97316','#FF5E1A','#00D97E','#FFB020','#FF4757','#F5A623'];
   const c = document.createElement('div');
   c.className = 'confetti-container';
   document.body.appendChild(c);
@@ -1360,17 +1360,16 @@ function attachForgot() {
 function screenStudentHome() {
   const p = App.profile || {};
   const firstName = (p.name||'Aluno').split(' ')[0];
-  const hour = new Date().getHours();
-  const saud = hour < 12 ? 'Bom dia' : hour < 18 ? 'E aí' : 'Boa noite';
   const cover = App.arena?.coverBase64 || App.arena?.photoBase64;
   const heroStyle = cover
     ? 'background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.94)),url(' + JSON.stringify(cover) + ');background-size:cover;background-position:center;'
     : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);';
   return `<div class="screen">
    <div class="home-hero" style="${heroStyle}">
+      <div class="brand-row">Arena<span>Flow</span></div>
       <div class="flex items-center justify-between">
         <div class="home-greeting">
-          <small>${saud}, ${esc(firstName)}!</small>Bora pra areia? 🏖️
+          <small>👋 Fala, ${esc(firstName)}!</small>Pronto para mais uma rodada?
         </div>
         <div class="flex items-center" style="gap:14px">
           <div onclick="App.go('${SCREENS.S_NOTIFS}')" style="position:relative;font-size:24px;cursor:pointer;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-8px;background:var(--danger,#ff4d4d);color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 5px;min-width:16px;text-align:center"></span></div>
@@ -1497,7 +1496,8 @@ function liveStudentHome() {
           const st = stEscolhido;
           const pct = Math.round((cls.spotsUsed||0)/(cls.maxSpots||1)*100);
           const barClass = pct>=90?'low':pct>=60?'medium':'high';
-          nc.innerHTML = `<div class="class-card status-${getClassStatus(cls)}" onclick="App.go('${SCREENS.S_SCHEDULE}')">
+          nc.innerHTML = `<div class="card-hero" onclick="App.go('${SCREENS.S_SCHEDULE}')">
+            <span class="hero-watermark">📅</span>
             <div class="flex items-center justify-between">
               <div>
                 <div class="t-h3">${cls.modality||'Futevôlei'}</div>
@@ -1532,7 +1532,7 @@ function liveStudentHome() {
             <span style="font-size:20px">${medals[i]}</span>
             ${renderAvatar(x.data,'avatar-sm')}
             <span class="t-h3 flex-1">${esc(x.data.name)||'—'}</span>
-            <span class="badge badge-primary">${x.val} aula${x.val>1?'s':''}</span>
+            <span class="rank-points">${x.val} aula${x.val>1?'s':''}</span>
           </div>`;
         }).join('')
       }</div>`;
@@ -2125,7 +2125,7 @@ function loadRanking(type) {
                 <div class="t-h3">${esc(data.name)||'—'} ${isMe?'<span style="color:var(--primary)">(você)</span>':''}</div>
                 <div class="t-xs t-muted">${data.badges?.length||0} emblemas</div>
               </div>
-              <span class="badge badge-primary">${x.val}</span>
+              <span class="rank-points">🏅 ${x.val}</span>
             </div>`;
           }).join('')}
         </div>`;
@@ -2381,9 +2381,10 @@ function screenAdminHome() {
   const g = App.profile || {};
   return `<div class="screen">
     <div class="home-hero" style="${(a.coverBase64||a.photoBase64) ? 'background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.92)),url(' + JSON.stringify(a.coverBase64||a.photoBase64) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);'}">
+      <div class="brand-row">Arena<span>Flow</span></div>
       <div class="flex items-center justify-between">
         <div class="home-greeting">
-          <small>Painel da Arena</small>${esc(a.name)||'Arena'} 🏟️
+          <small>👋 Fala, gestor!</small>${esc(a.name)||'Arena'}
         </div>
         <div class="avatar avatar-md" style="background:var(--accent-dim);color:var(--accent)"
           onclick="App.go('${SCREENS.A_SETTINGS}')">${getInitials(g.name||'A')}</div>
@@ -3938,7 +3939,7 @@ function screenSAHome() {
         <div class="t-label t-dim">Superadmin</div>
         <div class="topbar-title">ArenaFlow 👑</div>
       </div>
-      <div class="avatar avatar-md" style="background:linear-gradient(135deg,var(--primary),#6B4EFF);color:#fff">SA</div>
+      <div class="avatar avatar-md" style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff">SA</div>
     </div>
     <div style="padding:0 20px 16px">
       <div class="mrr-hero">
