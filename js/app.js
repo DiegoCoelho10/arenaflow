@@ -231,7 +231,7 @@ const SCREENS = {
 const BADGES = [
   {id:'first',    emoji:'🌱', name:'Broto',           req:1,   type:'classes',          desc:'Participe da sua 1ª aula na arena'},
   {id:'b3',       emoji:'👟', name:'Estreante',        req:3,   type:'classes',          desc:'Complete 3 aulas e mostre que veio pra ficar'},
-  {id:'b5',       emoji:'🏐', name:'Na Quadra',        req:5,   type:'classes',          desc:'Complete 5 aulas — você já faz parte da turma!'},
+  {id:'b5',       emoji:'⚽', name:'Na Quadra',        req:5,   type:'classes',          desc:'Complete 5 aulas — você já faz parte da turma!'},
   {id:'b10',      emoji:'⚡', name:'Com Gás',          req:10,  type:'classes',          desc:'10 aulas concluídas — a energia não para!'},
   {id:'b15',      emoji:'🔥', name:'Pegando Fogo',     req:15,  type:'classes',          desc:'15 aulas — você está pegando fogo na quadra!'},
   {id:'b20',      emoji:'🌊', name:'Flow',             req:20,  type:'classes',          desc:'20 aulas — você entrou no ritmo, no flow!'},
@@ -727,7 +727,7 @@ function screenSplash() {
       <div class="logo-name">Arena<span>Flow</span></div>
       <div class="logo-tagline">Gestão inteligente de arenas</div>
     </div>
-    <div class="splash-illustration">🏐</div>
+    <div class="splash-illustration">⚽</div>
     <div class="splash-actions">
       <button class="btn btn-primary btn-lg btn-full" id="btn-login">Entrar na minha conta</button>
      <button class="btn btn-outline btn-lg btn-full" id="btn-register">Criar conta de aluno</button>
@@ -849,7 +849,7 @@ window.promptInstall = async function() {
   if (window.deferredInstallPrompt) {
     window.deferredInstallPrompt.prompt();
     const choice = await window.deferredInstallPrompt.userChoice.catch(()=>null);
-    if (choice && choice.outcome === 'accepted') showToast('Pronto! Procure o ArenaFlow na tela inicial 🏐','success');
+    if (choice && choice.outcome === 'accepted') showToast('Pronto! Procure o ArenaFlow na tela inicial ⚽','success');
     window.deferredInstallPrompt = null;
     return;
   }
@@ -860,7 +860,7 @@ window.promptInstall = async function() {
         <div class="t-sm">1️⃣ Abra este site no <b>Safari</b></div>
         <div class="t-sm">2️⃣ Toque no botão <b>Compartilhar</b> (quadrado com seta ↑)</div>
         <div class="t-sm">3️⃣ Escolha <b>"Adicionar à Tela de Início"</b></div>
-        <div class="t-sm">4️⃣ Confirme — o ArenaFlow vira um app no seu celular 🏐</div>
+        <div class="t-sm">4️⃣ Confirme — o ArenaFlow vira um app no seu celular ⚽</div>
       </div>`,
       actions:[{label:'Entendi!', style:'btn-primary', close:true}]
     });
@@ -871,7 +871,7 @@ window.promptInstall = async function() {
     html:`<div style="text-align:left;margin-top:12px;display:flex;flex-direction:column;gap:10px">
       <div class="t-sm">1️⃣ Toque nos <b>3 pontinhos (⋮)</b> do navegador</div>
       <div class="t-sm">2️⃣ Escolha <b>"Instalar aplicativo"</b> ou <b>"Adicionar à tela inicial"</b></div>
-      <div class="t-sm">3️⃣ Confirme — o ArenaFlow vira um app no seu celular 🏐</div>
+      <div class="t-sm">3️⃣ Confirme — o ArenaFlow vira um app no seu celular ⚽</div>
     </div>`,
     actions:[{label:'Entendi!', style:'btn-primary', close:true}]
   });
@@ -884,7 +884,7 @@ function maybeOfferInstall() {
     if (!/android|iphone|ipad|ipod/i.test(navigator.userAgent)) return;
     localStorage.setItem('af_install_hint','1');
     showModal({
-      icon:'🏐', iconBg:'var(--primary-dim)',
+      icon:'⚽', iconBg:'var(--primary-dim)',
       title:'Leve o ArenaFlow com você',
       text:'Instale o app no celular: abre em tela cheia, direto da tela inicial, sem depender do navegador.',
       actions:[
@@ -1163,7 +1163,7 @@ async function submitRegister() {
     showModal({
       icon:'🎉', iconBg:'var(--success-dim)',
       title:'Conta criada!',
-      text:`Bem-vindo ao ArenaFlow, ${regData.name.split(' ')[0]}! 🏐`,
+      text:`Bem-vindo ao ArenaFlow, ${regData.name.split(' ')[0]}! ⚽`,
       actions:[{label:'Começar agora!', style:'btn-success', close:true}],
       onClose: () => App.go(SCREENS.S_HOME)
     });
@@ -1524,7 +1524,7 @@ function liveStudentHome() {
         .filter(x => x.val > 0)
         .sort((a,b) => b.val - a.val)
         .slice(0,3);
-      if (!top.length) { mr.innerHTML = `<div class="card t-muted t-center" style="padding:20px">Ranking ainda sem dados — participe das aulas! 🏐</div>`; return; }
+      if (!top.length) { mr.innerHTML = `<div class="card t-muted t-center" style="padding:20px">Ranking ainda sem dados — participe das aulas! ⚽</div>`; return; }
       mr.innerHTML = `<div class="card" style="padding:0;overflow:hidden">${
         top.map((x,i) => {
           const medals = ['🥇','🥈','🥉'];
@@ -3169,7 +3169,7 @@ window.sendConfirmations = function(clsId) {
         .sort((a,b) => (a.waitlistPosition||99) - (b.waitlistPosition||99))
         .map((e,i) => `${i+1}º ${e.studentName || 'Aluno'}`);
       const [y,m,dd] = (cls.dateStr||'').split('-');
-      let msg = `🏐 *${App.arena?.name || 'Arena'} — Confirmação de aula*\n`;
+      let msg = `⚽ *${App.arena?.name || 'Arena'} — Confirmação de aula*\n`;
       msg += `📅 ${dd}/${m} às ${cls.startTime}${cls.modality ? ' • ' + cls.modality : ''}\n\n`;
       msg += `*Confirmados (${confirmados.length}):*\n${confirmados.join('\n') || '—'}\n`;
       if (fila.length) msg += `\n*Fila de espera:*\n${fila.join('\n')}\n`;
@@ -3280,7 +3280,7 @@ function screenAdminCreate() {
         </select>
       </div>
       <button class="btn btn-primary btn-full btn-lg" id="btn-create-class">
-        🏐 Criar aula e enviar convites
+        ⚽ Criar aula e enviar convites
       </button>
     </div>
   </div>`;
