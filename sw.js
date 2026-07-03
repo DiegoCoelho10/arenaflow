@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arenaflow-v17';
+const CACHE_NAME = 'arenaflow-v18';
 const ASSETS = [
   './', './index.html', './css/styles.css',
   './js/firebase-config.js', './js/app.js', './manifest.json',
