@@ -723,7 +723,7 @@ function attachListeners(screen) {
 function screenSplash() {
   return `<div class="screen no-nav splash-screen has-auth-bg">${authBgHTML()}
     <div class="splash-logo">
-      <div class="logo-mark">AF</div>
+      <img src="icons/icon-192.png" class="logo-img" alt="ArenaFlow">
       <div class="logo-name">Arena<span>Flow</span></div>
       <div class="logo-tagline">Gestão inteligente de arenas</div>
     </div>
@@ -758,7 +758,7 @@ function screenLogin() {
     <div class="auth-header">
       <button class="back-btn" onclick="App.go('${SCREENS.SPLASH}')">←</button>
       <br><br>
-      <div class="logo-mark" style="width:52px;height:52px;font-size:22px;border-radius:16px;margin-bottom:16px">AF</div>
+      <img src="icons/icon-192.png" class="logo-img logo-img-sm" alt="ArenaFlow" style="margin-bottom:16px">
       <h1 class="t-h1">Bem-vindo de volta 👋</h1>
       <p class="t-body t-muted" style="margin-top:6px">Entre com seus dados para continuar</p>
     </div>
@@ -927,7 +927,7 @@ function showLockScreen(uid) {
   const c = document.getElementById('screen-container');
   c.innerHTML = `<div class="screen no-nav splash-screen">
     <div class="splash-logo">
-      <div class="logo-mark">AF</div>
+      <img src="icons/icon-192.png" class="logo-img" alt="ArenaFlow">
       <div class="logo-name">Arena<span>Flow</span></div>
       <div class="logo-tagline">App protegido por biometria</div>
     </div>
@@ -4418,7 +4418,7 @@ function screenSASettings() {
       </div>
     </div>
     <div style="padding:24px 20px;text-align:center">
-      <div class="logo-mark" style="width:52px;height:52px;font-size:22px;border-radius:16px;margin:0 auto 12px">AF</div>
+      <img src="icons/icon-192.png" class="logo-img logo-img-sm" alt="ArenaFlow" style="display:block;margin:0 auto 12px">
       <div class="t-sm t-muted">ArenaFlow v1.0</div>
       <div class="t-xs t-dim">by você 👑</div>
     </div>
