@@ -1,9 +1,8 @@
-const CACHE_NAME = 'arenaflow-v19';
+const CACHE_NAME = 'arenaflow-v18';
 const ASSETS = [
   './', './index.html', './css/styles.css',
   './js/firebase-config.js', './js/app.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png',
-  './icons/apple-touch-icon.png', './icons/favicon-48.png',
   './imgs/bg1.jpg', './imgs/bg2.jpg', './imgs/bg3.jpg'
 ];
 
