@@ -137,7 +137,7 @@ async function findStaffInvite(email) {
 
 function offerStaffInvite(arena, uid) {
   showModal({
-    icon:'🤝', iconBg:'var(--primary-dim)',
+    icon:icon('handshake'), iconBg:'var(--primary-dim)',
     title:'Convite de equipe!',
     text:`Você foi convidado para a equipe da ${arena.name}. Como funcionário, você poderá criar aulas e gerenciar alunos e filas.`,
     actions:[
@@ -188,7 +188,7 @@ window.addStaffEmail = async function() {
 };
 
 window.removeStaffEmail = async function(email) {
-  confirmModal('Remover da equipe?', `${email} perderá o acesso de gestão imediatamente.`, '🚫', async () => {
+  confirmModal('Remover da equipe?', `${email} perderá o acesso de gestão imediatamente.`, icon('ban','ic-lg'), async () => {
     showLoading();
     try {
       await db.collection('arenas').doc(App.arenaId).update({
@@ -229,42 +229,42 @@ const SCREENS = {
 };
 
 const BADGES = [
-  {id:'first',    emoji:'🌱', name:'Broto',           req:1,   type:'classes',          desc:'Participe da sua 1ª aula na arena'},
-  {id:'b3',       emoji:'👟', name:'Estreante',        req:3,   type:'classes',          desc:'Complete 3 aulas e mostre que veio pra ficar'},
-  {id:'b5',       emoji:'⚽', name:'Na Quadra',        req:5,   type:'classes',          desc:'Complete 5 aulas — você já faz parte da turma!'},
-  {id:'b10',      emoji:'⚡', name:'Com Gás',          req:10,  type:'classes',          desc:'10 aulas concluídas — a energia não para!'},
-  {id:'b15',      emoji:'🔥', name:'Pegando Fogo',     req:15,  type:'classes',          desc:'15 aulas — você está pegando fogo na quadra!'},
-  {id:'b20',      emoji:'🌊', name:'Flow',             req:20,  type:'classes',          desc:'20 aulas — você entrou no ritmo, no flow!'},
-  {id:'b25',      emoji:'💪', name:'Determinado',      req:25,  type:'classes',          desc:'25 aulas — determinação é o que não falta!'},
-  {id:'b30',      emoji:'🎯', name:'Focado',           req:30,  type:'classes',          desc:'30 aulas com olho no objetivo. Foco total!'},
-  {id:'b40',      emoji:'🦁', name:'Guerreiro',        req:40,  type:'classes',          desc:'40 aulas — raça e garra de verdade!'},
-  {id:'b50',      emoji:'💎', name:'Diamante',         req:50,  type:'classes',          desc:'50 aulas! Marco histórico — você é Diamante!'},
-  {id:'b60',      emoji:'🚀', name:'Decolando',        req:60,  type:'classes',          desc:'60 aulas — você decolou e não para mais!'},
-  {id:'b70',      emoji:'🏆', name:'Campeão',          req:70,  type:'classes',          desc:'70 aulas — poucos chegam aqui. Você é um campeão!'},
-  {id:'b80',      emoji:'👑', name:'Rei da Quadra',    req:80,  type:'classes',          desc:'80 aulas — a quadra tem um novo rei!'},
-  {id:'b90',      emoji:'⭐', name:'Estrela',          req:90,  type:'classes',          desc:'90 aulas — você brilha como uma estrela!'},
-  {id:'b100',     emoji:'🔱', name:'Elite ArenaFlow',  req:100, type:'classes',          desc:'100 aulas! Você é Elite ArenaFlow — lenda confirmada!'},
-  {id:'b150',     emoji:'🌟', name:'Imortal',          req:150, type:'classes',          desc:'150 aulas — imortal na quadra e na história!'},
-  {id:'b200',     emoji:'🎖️', name:'Hall da Fama',     req:200, type:'classes',          desc:'200 aulas — seu nome está no Hall da Fama!'},
-  {id:'b300',     emoji:'🏅', name:'Patrimônio',       req:300, type:'classes',          desc:'300 aulas — você é um patrimônio desta arena!'},
-  {id:'streak2',  emoji:'📅', name:'Pontual',          req:2,   type:'streak_weeks',     desc:'2 semanas seguidas sem faltar uma aula'},
-  {id:'streak4',  emoji:'🗓️', name:'Consistente',      req:4,   type:'streak_weeks',     desc:'4 semanas seguidas — 1 mês perfeito!'},
-  {id:'streak8',  emoji:'🔄', name:'Máquina',          req:8,   type:'streak_weeks',     desc:'8 semanas seguidas sem parar!'},
-  {id:'streak12', emoji:'🧱', name:'Inabalável',       req:12,  type:'streak_weeks',     desc:'12 semanas seguidas — nada te para!'},
-  {id:'streak26', emoji:'🌙', name:'Dedicado',         req:26,  type:'streak_weeks',     desc:'6 meses consecutivos de presença!'},
-  {id:'streak52', emoji:'🌞', name:'Um Ano de Quadra', req:52,  type:'streak_weeks',     desc:'52 semanas seguidas — um ano inteiro!'},
-  {id:'fairplay', emoji:'🤝', name:'Fair Play',        req:10,  type:'no_cancel',        desc:'10 aulas seguidas sem cancelar nenhuma'},
-  {id:'reliable', emoji:'🛡️', name:'Confiável',        req:0,   type:'monthly_no_cancel',desc:'Passe um mês inteiro sem cancelamento'},
-  {id:'fast',     emoji:'⚡', name:'Relâmpago',         req:0,   type:'fast_confirm',     desc:'Confirme em menos de 5 minutos após o convite'},
-  {id:'founder',  emoji:'🏅', name:'Fundador',          req:0,   type:'special',          desc:'Cadastrou-se no 1º mês de funcionamento da arena'},
-  {id:'birthday', emoji:'🎂', name:'Aniversariante',    req:0,   type:'special',          desc:'Participe de uma aula no mês do seu aniversário'},
-  {id:'rainy',    emoji:'🌧️', name:'Chuva Não Para',    req:5,   type:'special',          desc:'5 aulas em dias de chuva — nada te para!'},
-  {id:'lucky',    emoji:'🎭', name:'Sortudo',            req:3,   type:'waitlist_went',    desc:'Chamado da fila de espera 3x e foi em todas!'},
-  {id:'social',   emoji:'💬', name:'Animado',            req:50,  type:'reactions',        desc:'Dê 50 reações nas conquistas dos colegas'},
-  {id:'refer',    emoji:'🤙', name:'Embaixador',          req:1,   type:'referrals',       desc:'Indique um amigo que se cadastre na arena'},
-  {id:'xmas',     emoji:'🎄', name:'Espírito Natalino',  req:0,   type:'seasonal',         desc:'Participe de uma aula em dezembro'},
-  {id:'newyear',  emoji:'🎆', name:'Virada',              req:0,   type:'seasonal',         desc:'Aula na semana do ano novo'},
-  {id:'summer',   emoji:'☀️', name:'Verão Total',         req:10,  type:'seasonal',         desc:'10 aulas no verão (Dez–Mar)'},
+  {id:'first',    emoji:icon('sprout'), name:'Broto',           req:1,   type:'classes',          desc:'Participe da sua 1ª aula na arena'},
+  {id:'b3',       emoji:icon('footprints'), name:'Estreante',        req:3,   type:'classes',          desc:'Complete 3 aulas e mostre que veio pra ficar'},
+  {id:'b5',       emoji:icon('volleyball'), name:'Na Quadra',        req:5,   type:'classes',          desc:'Complete 5 aulas — você já faz parte da turma!'},
+  {id:'b10',      emoji:icon('zap'), name:'Com Gás',          req:10,  type:'classes',          desc:'10 aulas concluídas — a energia não para!'},
+  {id:'b15',      emoji:icon('flame'), name:'Pegando Fogo',     req:15,  type:'classes',          desc:'15 aulas — você está pegando fogo na quadra!'},
+  {id:'b20',      emoji:icon('waves'), name:'Flow',             req:20,  type:'classes',          desc:'20 aulas — você entrou no ritmo, no flow!'},
+  {id:'b25',      emoji:icon('biceps-flexed'), name:'Determinado',      req:25,  type:'classes',          desc:'25 aulas — determinação é o que não falta!'},
+  {id:'b30',      emoji:icon('target'), name:'Focado',           req:30,  type:'classes',          desc:'30 aulas com olho no objetivo. Foco total!'},
+  {id:'b40',      emoji:icon('swords'), name:'Guerreiro',        req:40,  type:'classes',          desc:'40 aulas — raça e garra de verdade!'},
+  {id:'b50',      emoji:icon('gem'), name:'Diamante',         req:50,  type:'classes',          desc:'50 aulas! Marco histórico — você é Diamante!'},
+  {id:'b60',      emoji:icon('rocket'), name:'Decolando',        req:60,  type:'classes',          desc:'60 aulas — você decolou e não para mais!'},
+  {id:'b70',      emoji:icon('trophy'), name:'Campeão',          req:70,  type:'classes',          desc:'70 aulas — poucos chegam aqui. Você é um campeão!'},
+  {id:'b80',      emoji:icon('crown'), name:'Rei da Quadra',    req:80,  type:'classes',          desc:'80 aulas — a quadra tem um novo rei!'},
+  {id:'b90',      emoji:icon('star'), name:'Estrela',          req:90,  type:'classes',          desc:'90 aulas — você brilha como uma estrela!'},
+  {id:'b100',     emoji:icon('award'), name:'Elite ArenaFlow',  req:100, type:'classes',          desc:'100 aulas! Você é Elite ArenaFlow — lenda confirmada!'},
+  {id:'b150',     emoji:icon('sparkles'), name:'Imortal',          req:150, type:'classes',          desc:'150 aulas — imortal na quadra e na história!'},
+  {id:'b200',     emoji:icon('landmark'), name:'Hall da Fama',     req:200, type:'classes',          desc:'200 aulas — seu nome está no Hall da Fama!'},
+  {id:'b300',     emoji:icon('medal'), name:'Patrimônio',       req:300, type:'classes',          desc:'300 aulas — você é um patrimônio desta arena!'},
+  {id:'streak2',  emoji:icon('calendar-days'), name:'Pontual',          req:2,   type:'streak_weeks',     desc:'2 semanas seguidas sem faltar uma aula'},
+  {id:'streak4',  emoji:icon('calendar-check'), name:'Consistente',      req:4,   type:'streak_weeks',     desc:'4 semanas seguidas — 1 mês perfeito!'},
+  {id:'streak8',  emoji:icon('refresh-cw'), name:'Máquina',          req:8,   type:'streak_weeks',     desc:'8 semanas seguidas sem parar!'},
+  {id:'streak12', emoji:icon('brick-wall'), name:'Inabalável',       req:12,  type:'streak_weeks',     desc:'12 semanas seguidas — nada te para!'},
+  {id:'streak26', emoji:icon('moon'), name:'Dedicado',         req:26,  type:'streak_weeks',     desc:'6 meses consecutivos de presença!'},
+  {id:'streak52', emoji:icon('sun'), name:'Um Ano de Quadra', req:52,  type:'streak_weeks',     desc:'52 semanas seguidas — um ano inteiro!'},
+  {id:'fairplay', emoji:icon('handshake'), name:'Fair Play',        req:10,  type:'no_cancel',        desc:'10 aulas seguidas sem cancelar nenhuma'},
+  {id:'reliable', emoji:icon('shield'), name:'Confiável',        req:0,   type:'monthly_no_cancel',desc:'Passe um mês inteiro sem cancelamento'},
+  {id:'fast',     emoji:icon('zap'), name:'Relâmpago',         req:0,   type:'fast_confirm',     desc:'Confirme em menos de 5 minutos após o convite'},
+  {id:'founder',  emoji:icon('medal'), name:'Fundador',          req:0,   type:'special',          desc:'Cadastrou-se no 1º mês de funcionamento da arena'},
+  {id:'birthday', emoji:icon('cake'), name:'Aniversariante',    req:0,   type:'special',          desc:'Participe de uma aula no mês do seu aniversário'},
+  {id:'rainy',    emoji:icon('cloud-rain'), name:'Chuva Não Para',    req:5,   type:'special',          desc:'5 aulas em dias de chuva — nada te para!'},
+  {id:'lucky',    emoji:icon('drama'), name:'Sortudo',            req:3,   type:'waitlist_went',    desc:'Chamado da fila de espera 3x e foi em todas!'},
+  {id:'social',   emoji:icon('message-circle'), name:'Animado',            req:50,  type:'reactions',        desc:'Dê 50 reações nas conquistas dos colegas'},
+  {id:'refer',    emoji:icon('user-plus'), name:'Embaixador',          req:1,   type:'referrals',       desc:'Indique um amigo que se cadastre na arena'},
+  {id:'xmas',     emoji:icon('tree-pine'), name:'Espírito Natalino',  req:0,   type:'seasonal',         desc:'Participe de uma aula em dezembro'},
+  {id:'newyear',  emoji:icon('party-popper'), name:'Virada',              req:0,   type:'seasonal',         desc:'Aula na semana do ano novo'},
+  {id:'summer',   emoji:icon('sun'), name:'Verão Total',         req:10,  type:'seasonal',         desc:'10 aulas no verão (Dez–Mar)'},
 ];
 
 const STATUS_LABELS = {
@@ -373,7 +373,7 @@ const App = {
             hideLoading();
             this.go(SCREENS.LOGIN);
             setTimeout(() => showModal({
-              icon: '⚠️', iconBg: 'var(--warning-dim)',
+              icon: icon('triangle-alert','ic-lg'), iconBg: 'var(--warning-dim)',
               title: 'Acesso Suspenso',
               text: 'O acesso desta arena está suspenso. Entre em contato com o suporte ArenaFlow.',
               actions: [{label:'OK', style:'btn-outline', close:true}]
@@ -449,7 +449,7 @@ function showLoading()  { document.getElementById('loading-overlay').classList.r
 function hideLoading()  { document.getElementById('loading-overlay').classList.add('hidden'); }
 
 function showToast(msg, type='', duration=2800) {
-  const icons = { success:'✅', error:'❌', warning:'⚠️', '' :'ℹ️' };
+  const icons = { success:icon('circle-check'), error:icon('circle-x'), warning:icon('triangle-alert'), '' :icon('info') };
   const c = document.getElementById('toast-container');
   const t = document.createElement('div');
   t.className = `toast ${type ? 'toast-'+type : ''}`;
@@ -504,7 +504,7 @@ function confirmModal(title, text, icon, onConfirm) {
 }
 
 function confetti() {
-  const colors = ['#F97316','#FF5E1A','#00D97E','#FFB020','#FF4757','#F5A623'];
+  const colors = ['#3D6EFF','#FF5E1A','#00D97E','#FFB020','#FF4757','#6B4EFF'];
   const c = document.createElement('div');
   c.className = 'confetti-container';
   document.body.appendChild(c);
@@ -572,6 +572,15 @@ window.uploadProfilePhoto = function() {
   };
   input.click();
 };
+// ── ICON SYSTEM (sprite Lucide embutido no index.html) ──────
+function icon(name, cls='') {
+  return `<svg class="ic${cls ? ' ' + cls : ''}"><use href="#lc-${name}"/></svg>`;
+}
+function lvlDot(nivel) {
+  const map = { iniciante:'green', intermediario:'yellow', avancado:'red', misto:'orange', feminino:'pink' };
+  return `<i class="dot dot-${map[nivel] || 'orange'}"></i>`;
+}
+
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -643,7 +652,7 @@ function renderScreen(screen, params) {
   };
   const fn = renderers[screen];
   if (fn) c.innerHTML = fn(params);
-  else c.innerHTML = `<div class="screen empty-state"><div class="empty-emoji">🏗️</div><div class="empty-title">Em construção</div></div>`;
+  else c.innerHTML = `<div class="screen empty-state"><div class="empty-emoji">${icon('hammer')}</div><div class="empty-title">Em construção</div></div>`;
   attachListeners(screen, params);
 }
 
@@ -655,26 +664,26 @@ function renderNav(screen) {
   let items = [];
   if (role === 'student' || !role) {
     items = [
-      {screen:SCREENS.S_HOME,     icon:'🏠', label:'Início'},
-      {screen:SCREENS.S_SCHEDULE, icon:'📅', label:'Horários'},
-      {screen:SCREENS.S_CLASSES,  icon:'📋', label:'Minhas Aulas'},
-      {screen:SCREENS.S_RANKING,  icon:'🏆', label:'Ranking'},
-      {screen:SCREENS.S_PROFILE,  icon:'👤', label:'Perfil'},
+      {screen:SCREENS.S_HOME,     icon:icon('home'), label:'Início'},
+      {screen:SCREENS.S_SCHEDULE, icon:icon('calendar-days'), label:'Horários'},
+      {screen:SCREENS.S_CLASSES,  icon:icon('clipboard-list'), label:'Minhas Aulas'},
+      {screen:SCREENS.S_RANKING,  icon:icon('trophy'), label:'Ranking'},
+      {screen:SCREENS.S_PROFILE,  icon:icon('user'), label:'Perfil'},
     ];
   } else if (role === 'arena_admin') {
     items = [
-      {screen:SCREENS.A_HOME,     icon:'🏠', label:'Início'},
-      {screen:SCREENS.A_SCHEDULE, icon:'📅', label:'Agenda'},
-      {screen:SCREENS.A_STUDENTS, icon:'👥', label:'Alunos'},
-      {screen:SCREENS.A_REPORTS,  icon:'📊', label:'Relatórios'},
-      {screen:SCREENS.A_SETTINGS, icon:'⚙️', label:'Config'},
+      {screen:SCREENS.A_HOME,     icon:icon('home'), label:'Início'},
+      {screen:SCREENS.A_SCHEDULE, icon:icon('calendar-days'), label:'Agenda'},
+      {screen:SCREENS.A_STUDENTS, icon:icon('users'), label:'Alunos'},
+      {screen:SCREENS.A_REPORTS,  icon:icon('chart-column'), label:'Relatórios'},
+      {screen:SCREENS.A_SETTINGS, icon:icon('settings'), label:'Config'},
     ];
   } else if (role === 'superadmin') {
     items = [
-      {screen:SCREENS.SA_HOME,      icon:'🏠', label:'Início'},
-      {screen:SCREENS.SA_ARENAS,    icon:'🏟️', label:'Arenas'},
-      {screen:SCREENS.SA_FINANCIAL, icon:'💰', label:'Financeiro'},
-      {screen:SCREENS.SA_SETTINGS,  icon:'⚙️', label:'Config'},
+      {screen:SCREENS.SA_HOME,      icon:icon('home'), label:'Início'},
+      {screen:SCREENS.SA_ARENAS,    icon:icon('warehouse'), label:'Arenas'},
+      {screen:SCREENS.SA_FINANCIAL, icon:icon('wallet'), label:'Financeiro'},
+      {screen:SCREENS.SA_SETTINGS,  icon:icon('settings'), label:'Config'},
     ];
   }
   c.innerHTML = `<nav class="bottom-nav">${
@@ -723,19 +732,19 @@ function attachListeners(screen) {
 function screenSplash() {
   return `<div class="screen no-nav splash-screen has-auth-bg">${authBgHTML()}
     <div class="splash-logo">
-      <img src="icons/icon-192.png" class="logo-img" alt="ArenaFlow">
+      <div class="logo-mark">AF</div>
       <div class="logo-name">Arena<span>Flow</span></div>
       <div class="logo-tagline">Gestão inteligente de arenas</div>
     </div>
-    <div class="splash-illustration">⚽</div>
+    <div class="splash-illustration">${icon('volleyball')}</div>
     <div class="splash-actions">
       <button class="btn btn-primary btn-lg btn-full" id="btn-login">Entrar na minha conta</button>
      <button class="btn btn-outline btn-lg btn-full" id="btn-register">Criar conta de aluno</button>
       <button class="btn btn-ghost btn-full" id="btn-gestor" style="color:var(--text-2);font-size:14px">
-        🏟️ Sou gestor de uma arena — tenho um código
+        ${icon('warehouse')} Sou gestor de uma arena — tenho um código
       </button>
       <button class="btn btn-outline btn-full" id="btn-install" style="display:none;gap:8px">
-        📲 Instalar o aplicativo no celular
+        ${icon('download')} Instalar o aplicativo no celular
       </button>
     </div>
   </div>`;
@@ -758,7 +767,7 @@ function screenLogin() {
     <div class="auth-header">
       <button class="back-btn" onclick="App.go('${SCREENS.SPLASH}')">←</button>
       <br><br>
-      <img src="icons/icon-192.png" class="logo-img logo-img-sm" alt="ArenaFlow" style="margin-bottom:16px">
+      <div class="logo-mark" style="width:52px;height:52px;font-size:22px;border-radius:16px;margin-bottom:16px">AF</div>
       <h1 class="t-h1">Bem-vindo de volta 👋</h1>
       <p class="t-body t-muted" style="margin-top:6px">Entre com seus dados para continuar</p>
     </div>
@@ -767,14 +776,14 @@ function screenLogin() {
         <label>E-mail</label>
         <div class="input-group">
           <input class="input" id="login-email" type="email" placeholder="seu@email.com" autocomplete="email">
-          <span class="input-icon">✉️</span>
+          <span class="input-icon">${icon('mail')}</span>
         </div>
       </div>
       <div class="field">
         <label>Senha</label>
         <div class="input-group">
           <input class="input" id="login-pwd" type="password" placeholder="Sua senha" autocomplete="current-password">
-          <span class="input-icon" id="pwd-toggle" style="cursor:pointer">👁️</span>
+          <span class="input-icon" id="pwd-toggle" style="cursor:pointer">${icon('eye')}</span>
         </div>
       </div>
       <button class="btn btn-primary btn-full btn-lg" id="btn-login-submit">Entrar</button>
@@ -792,7 +801,7 @@ function attachLogin() {
 
   toggle?.addEventListener('click', () => {
     pwd.type = pwd.type === 'password' ? 'text' : 'password';
-    toggle.textContent = pwd.type === 'password' ? '👁️' : '🙈';
+    toggle.innerHTML = pwd.type === 'password' ? icon('eye') : icon('eye-off');
   });
 
   btnSubmit?.addEventListener('click', async () => {
@@ -849,29 +858,29 @@ window.promptInstall = async function() {
   if (window.deferredInstallPrompt) {
     window.deferredInstallPrompt.prompt();
     const choice = await window.deferredInstallPrompt.userChoice.catch(()=>null);
-    if (choice && choice.outcome === 'accepted') showToast('Pronto! Procure o ArenaFlow na tela inicial ⚽','success');
+    if (choice && choice.outcome === 'accepted') showToast('Pronto! Procure o ArenaFlow na tela inicial 🏐','success');
     window.deferredInstallPrompt = null;
     return;
   }
   if (isIOS()) {
     showModal({
-      icon:'📲', iconBg:'var(--primary-dim)', title:'Instalar no iPhone',
+      icon:icon('download'), iconBg:'var(--primary-dim)', title:'Instalar no iPhone',
       html:`<div style="text-align:left;margin-top:12px;display:flex;flex-direction:column;gap:10px">
         <div class="t-sm">1️⃣ Abra este site no <b>Safari</b></div>
         <div class="t-sm">2️⃣ Toque no botão <b>Compartilhar</b> (quadrado com seta ↑)</div>
         <div class="t-sm">3️⃣ Escolha <b>"Adicionar à Tela de Início"</b></div>
-        <div class="t-sm">4️⃣ Confirme — o ArenaFlow vira um app no seu celular ⚽</div>
+        <div class="t-sm">4️⃣ Confirme — o ArenaFlow vira um app no seu celular 🏐</div>
       </div>`,
       actions:[{label:'Entendi!', style:'btn-primary', close:true}]
     });
     return;
   }
   showModal({
-    icon:'📲', iconBg:'var(--primary-dim)', title:'Instalar o app',
+    icon:icon('download'), iconBg:'var(--primary-dim)', title:'Instalar o app',
     html:`<div style="text-align:left;margin-top:12px;display:flex;flex-direction:column;gap:10px">
       <div class="t-sm">1️⃣ Toque nos <b>3 pontinhos (⋮)</b> do navegador</div>
       <div class="t-sm">2️⃣ Escolha <b>"Instalar aplicativo"</b> ou <b>"Adicionar à tela inicial"</b></div>
-      <div class="t-sm">3️⃣ Confirme — o ArenaFlow vira um app no seu celular ⚽</div>
+      <div class="t-sm">3️⃣ Confirme — o ArenaFlow vira um app no seu celular 🏐</div>
     </div>`,
     actions:[{label:'Entendi!', style:'btn-primary', close:true}]
   });
@@ -884,7 +893,7 @@ function maybeOfferInstall() {
     if (!/android|iphone|ipad|ipod/i.test(navigator.userAgent)) return;
     localStorage.setItem('af_install_hint','1');
     showModal({
-      icon:'⚽', iconBg:'var(--primary-dim)',
+      icon:icon('volleyball'), iconBg:'var(--primary-dim)',
       title:'Leve o ArenaFlow com você',
       text:'Instale o app no celular: abre em tela cheia, direto da tela inicial, sem depender do navegador.',
       actions:[
@@ -927,11 +936,11 @@ function showLockScreen(uid) {
   const c = document.getElementById('screen-container');
   c.innerHTML = `<div class="screen no-nav splash-screen">
     <div class="splash-logo">
-      <img src="icons/icon-192.png" class="logo-img" alt="ArenaFlow">
+      <div class="logo-mark">AF</div>
       <div class="logo-name">Arena<span>Flow</span></div>
       <div class="logo-tagline">App protegido por biometria</div>
     </div>
-    <div class="splash-illustration">🔐</div>
+    <div class="splash-illustration">${icon('lock')}</div>
     <div class="splash-actions">
       <button class="btn btn-primary btn-lg btn-full" id="btn-unlock">Desbloquear</button>
       <button class="btn btn-ghost btn-full" id="btn-lock-exit" style="color:var(--text-2);font-size:14px">Entrar com outra conta</button>
@@ -944,7 +953,7 @@ function showLockScreen(uid) {
   };
   document.getElementById('btn-unlock')?.addEventListener('click', tryUnlock);
   document.getElementById('btn-lock-exit')?.addEventListener('click', () => {
-    confirmModal('Sair da conta?','Você precisará do e-mail e senha para entrar de novo.','🚪', async () => {
+    confirmModal('Sair da conta?','Você precisará do e-mail e senha para entrar de novo.',icon('log-out','ic-lg'), async () => {
       localStorage.removeItem('af_lock');
       App._unlocked = false;
       await auth.signOut();
@@ -1029,7 +1038,7 @@ function regFormStep3() {
     <label>Senha</label>
     <div class="input-group">
       <input class="input" id="reg-pwd" type="password" placeholder="Crie uma senha segura">
-      <span class="input-icon" id="reg-pwd-toggle" style="cursor:pointer">👁️</span>
+      <span class="input-icon" id="reg-pwd-toggle" style="cursor:pointer">${icon('eye')}</span>
     </div>
     <div class="pwd-strength" id="pwd-bars">
       <div class="pwd-bar" id="pb1"></div><div class="pwd-bar" id="pb2"></div>
@@ -1161,9 +1170,9 @@ async function submitRegister() {
     hideLoading();
     confetti();
     showModal({
-      icon:'🎉', iconBg:'var(--success-dim)',
+      icon:icon('party-popper'), iconBg:'var(--success-dim)',
       title:'Conta criada!',
-      text:`Bem-vindo ao ArenaFlow, ${regData.name.split(' ')[0]}! ⚽`,
+      text:`Bem-vindo ao ArenaFlow, ${regData.name.split(' ')[0]}! 🏐`,
       actions:[{label:'Começar agora!', style:'btn-success', close:true}],
       onClose: () => App.go(SCREENS.S_HOME)
     });
@@ -1186,7 +1195,7 @@ function screenInvite() {
     <div class="auth-header">
       <button class="back-btn" onclick="App.go('${SCREENS.SPLASH}')">←</button>
       <br><br>
-      <div style="font-size:52px;margin-bottom:16px">🔑</div>
+      <div style="font-size:52px;margin-bottom:16px">${icon('key-round')}</div>
       <h1 class="t-h1">Código de convite</h1>
       <p class="t-body t-muted" style="margin-top:6px">
         Digite o código de 6 dígitos que o responsável pelo ArenaFlow enviou para você
@@ -1213,7 +1222,7 @@ function screenInvite() {
         Não tem conta ainda? Crie normalmente com "Criar conta de aluno" e depois use o código
       </p>
       <button class="btn btn-primary btn-full btn-lg" id="btn-invite-submit">
-        🏟️ Entrar como Gestor
+        ${icon('warehouse')} Entrar como Gestor
       </button>
       <div class="auth-footer">
         <a onclick="App.go('${SCREENS.SPLASH}')" style="cursor:pointer">← Voltar</a>
@@ -1289,7 +1298,7 @@ function attachInvite() {
       hideLoading();
       confetti();
       showModal({
-        icon:'🏟️', iconBg:'var(--success-dim)',
+        icon:icon('warehouse'), iconBg:'var(--success-dim)',
         title:'Bem-vindo, Gestor!',
         text:`Você foi vinculado à ${arena.name} com sucesso!`,
         actions:[{label:'Abrir painel', style:'btn-success', close:true}],
@@ -1312,7 +1321,7 @@ function screenForgot() {
     <div class="auth-header">
       <button class="back-btn" onclick="App.go('${SCREENS.LOGIN}')">←</button>
       <br><br>
-      <div style="font-size:48px;margin-bottom:16px">🔑</div>
+      <div style="font-size:48px;margin-bottom:16px">${icon('key-round')}</div>
       <h1 class="t-h1">Recuperar senha</h1>
       <p class="t-body t-muted" style="margin-top:6px">Enviaremos um link de redefinição para o seu e-mail</p>
     </div>
@@ -1321,7 +1330,7 @@ function screenForgot() {
         <label>E-mail cadastrado</label>
         <div class="input-group">
           <input class="input" id="forgot-email" type="email" placeholder="seu@email.com">
-          <span class="input-icon">✉️</span>
+          <span class="input-icon">${icon('mail')}</span>
         </div>
       </div>
       <button class="btn btn-primary btn-full btn-lg" id="btn-forgot">Enviar link de recuperação</button>
@@ -1341,7 +1350,7 @@ function attachForgot() {
       await auth.sendPasswordResetEmail(email);
       hideLoading();
       showModal({
-        icon:'📧', iconBg:'var(--success-dim)',
+        icon:icon('mail','ic-lg'), iconBg:'var(--success-dim)',
         title:'E-mail enviado!',
         text:'Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.',
         actions:[{label:'OK', style:'btn-primary', close:true}],
@@ -1360,19 +1369,20 @@ function attachForgot() {
 function screenStudentHome() {
   const p = App.profile || {};
   const firstName = (p.name||'Aluno').split(' ')[0];
+  const hour = new Date().getHours();
+  const saud = hour < 12 ? 'Bom dia' : hour < 18 ? 'E aí' : 'Boa noite';
   const cover = App.arena?.coverBase64 || App.arena?.photoBase64;
   const heroStyle = cover
     ? 'background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.94)),url(' + JSON.stringify(cover) + ');background-size:cover;background-position:center;'
     : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);';
   return `<div class="screen">
    <div class="home-hero" style="${heroStyle}">
-      <div class="brand-row">Arena<span>Flow</span></div>
       <div class="flex items-center justify-between">
         <div class="home-greeting">
-          <small>👋 Fala, ${esc(firstName)}!</small>Pronto para mais uma rodada?
+          <small>${saud}, ${esc(firstName)}!</small>Bora pra areia? 🏖️
         </div>
         <div class="flex items-center" style="gap:14px">
-          <div onclick="App.go('${SCREENS.S_NOTIFS}')" style="position:relative;font-size:24px;cursor:pointer;line-height:1">🔔<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-8px;background:var(--danger,#ff4d4d);color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 5px;min-width:16px;text-align:center"></span></div>
+          <div onclick="App.go('${SCREENS.S_NOTIFS}')" style="position:relative;font-size:24px;cursor:pointer;line-height:1">${icon('bell')}<span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-8px;background:var(--danger,#ff4d4d);color:#fff;font-size:10px;font-weight:800;border-radius:9px;padding:1px 5px;min-width:16px;text-align:center"></span></div>
           <div onclick="App.go('${SCREENS.S_PROFILE}')">${renderAvatar(p,'avatar-md')}</div>
         </div>
       </div>
@@ -1389,14 +1399,14 @@ function screenStudentHome() {
       <div class="card t-muted t-center" style="padding:24px">Carregando...</div>
     </div>
     <div class="section-header" style="margin-top:8px">
-      <span class="section-title">🏆 Reis da areia</span>
+      <span class="section-title">${icon('trophy')} Reis da areia</span>
       <span class="section-action" onclick="App.go('${SCREENS.S_RANKING}')">Ver completo</span>
     </div>
     <div id="mini-ranking" style="padding:0 20px 8px">
       <div class="card t-muted t-center" style="padding:24px">Carregando...</div>
     </div>
     <div class="section-header" style="margin-top:8px">
-      <span class="section-title">🏅 Últimos emblemas</span>
+      <span class="section-title">${icon('medal')} Últimos emblemas</span>
       <span class="section-action" onclick="App.go('${SCREENS.S_PROFILE}')">Ver todos</span>
     </div>
     <div id="mini-badges" style="padding:0 20px"></div>
@@ -1445,7 +1455,7 @@ function liveStudentHome() {
     const m = document.getElementById('st-month');
     const s = document.getElementById('st-streak');
     if (m) m.textContent = effMonthClasses(d);
-    if (s) s.textContent = `${d.streakWeeks || 0}🔥`;
+    if (s) s.innerHTML = `${d.streakWeeks || 0}${icon('flame','ic-sm')}`;
 
     // Mini badges
     const earned = (d.badges || []);
@@ -1471,7 +1481,7 @@ function liveStudentHome() {
       const nc = document.getElementById('next-class-container');
       if (!nc) return;
       const vazio = `<div class="card" style="padding:24px;text-align:center">
-          <div style="font-size:32px;margin-bottom:8px">📭</div>
+          <div style="font-size:32px;margin-bottom:8px">${icon('inbox')}</div>
           <p class="t-sm t-muted">Nenhuma aula agendada em breve</p>
         </div>`;
       // Pula encerradas/canceladas, fora do nível, e aulas em que
@@ -1496,8 +1506,7 @@ function liveStudentHome() {
           const st = stEscolhido;
           const pct = Math.round((cls.spotsUsed||0)/(cls.maxSpots||1)*100);
           const barClass = pct>=90?'low':pct>=60?'medium':'high';
-          nc.innerHTML = `<div class="card-hero" onclick="App.go('${SCREENS.S_SCHEDULE}')">
-            <span class="hero-watermark">📅</span>
+          nc.innerHTML = `<div class="class-card status-${getClassStatus(cls)}" onclick="App.go('${SCREENS.S_SCHEDULE}')">
             <div class="flex items-center justify-between">
               <div>
                 <div class="t-h3">${cls.modality||'Futevôlei'}</div>
@@ -1524,7 +1533,7 @@ function liveStudentHome() {
         .filter(x => x.val > 0)
         .sort((a,b) => b.val - a.val)
         .slice(0,3);
-      if (!top.length) { mr.innerHTML = `<div class="card t-muted t-center" style="padding:20px">Ranking ainda sem dados — participe das aulas! ⚽</div>`; return; }
+      if (!top.length) { mr.innerHTML = `<div class="card t-muted t-center" style="padding:20px">Ranking ainda sem dados — participe das aulas! 🏐</div>`; return; }
       mr.innerHTML = `<div class="card" style="padding:0;overflow:hidden">${
         top.map((x,i) => {
           const medals = ['🥇','🥈','🥉'];
@@ -1532,7 +1541,7 @@ function liveStudentHome() {
             <span style="font-size:20px">${medals[i]}</span>
             ${renderAvatar(x.data,'avatar-sm')}
             <span class="t-h3 flex-1">${esc(x.data.name)||'—'}</span>
-            <span class="rank-points">${x.val} aula${x.val>1?'s':''}</span>
+            <span class="badge badge-primary">${x.val} aula${x.val>1?'s':''}</span>
           </div>`;
         }).join('')
       }</div>`;
@@ -1556,7 +1565,7 @@ function getClassStatus(cls) {
 function screenStudentSchedule() {
   const days = getWeekDays();
   return `<div class="screen">
-    <div class="topbar"><span class="topbar-title">📅 Horários</span></div>
+    <div class="topbar"><span class="topbar-title">${icon('calendar-days')} Horários</span></div>
     <div class="week-strip" id="week-strip">
       ${days.map((d,i) => `<div class="day-pill ${i===0?'active':''}" data-date="${d.iso}" onclick="selectDay('${d.iso}',this)">
         <span class="day-name">${d.name}</span>
@@ -1571,7 +1580,7 @@ function screenStudentSchedule() {
       <div class="chip" data-mod="Beach Tennis" onclick="filterMod('Beach Tennis',this)">Beach Tennis</div>
     </div>
     <div id="classes-list" style="padding:0 20px;display:flex;flex-direction:column;gap:10px">
-      <div class="empty-state"><div class="empty-emoji">⌛</div><div class="t-muted">Carregando...</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div><div class="t-muted">Carregando...</div></div>
     </div>
   </div>`;
 }
@@ -1599,7 +1608,7 @@ function loadClassesForDay(dateStr) {
   if (!App.arenaId) return;
   const list = document.getElementById('classes-list');
   if (!list) return;
-  list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
+  list.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>`;
   let q = db.collection('arenas').doc(App.arenaId).collection('classes')
     .where('dateStr','==',dateStr);
   if (window._currentMod && window._currentMod !== 'all') {
@@ -1617,10 +1626,10 @@ function loadClassesForDay(dateStr) {
     docs = docs.filter(d => nivelMatches(d.data().nivel, studentNivel));
     if (docs.length === 0) {
       const msg = !studentNivel
-        ? `<div class="empty-state"><div class="empty-emoji">🎯</div>
+        ? `<div class="empty-state"><div class="empty-emoji">${icon('target')}</div>
             <div class="empty-title">Aguardando seu nível</div>
             <div class="empty-text">O gestor ainda vai definir seu nível — depois disso suas aulas aparecem aqui.</div></div>`
-        : `<div class="empty-state"><div class="empty-emoji">🏖️</div>
+        : `<div class="empty-state"><div class="empty-emoji">${icon('tree-palm')}</div>
             <div class="empty-title">Sem aulas neste dia</div></div>`;
       list.innerHTML = msg;
       return;
@@ -1657,7 +1666,7 @@ function renderClassCards(docs, container) {
             const hoursLeft = Math.floor(hoursUntil - minHours);
             const minsLeft = Math.floor(((hoursUntil - minHours) % 1) * 60);
             actionBtn = `<div class="t-center">
-              <div class="t-xs t-muted">${tipo==='mensalista'?'⭐':'🎫'} Abre em</div>
+              <div class="t-xs t-muted">${tipo==='mensalista'?icon('star','ic-sm'):icon('ticket','ic-sm')} Abre em</div>
               <div style="font-size:13px;font-weight:700;color:var(--warning)">${hoursLeft}h ${minsLeft}min</div>
             </div>`;
           } else {
@@ -1704,7 +1713,7 @@ window.enrollClass = async function(clsId) {
     const student = stSnap.exists ? stSnap.data() : {};
     if (student.status === 'blocked') {
       hideLoading();
-      showModal({ icon:'⛔', iconBg:'var(--danger-dim)', title:'Acesso bloqueado',
+      showModal({ icon:icon('ban'), iconBg:'var(--danger-dim)', title:'Acesso bloqueado',
         text:'Fale com o gestor da arena.', actions:[{label:'OK', style:'btn-outline', close:true}] });
       return;
     }
@@ -1718,7 +1727,7 @@ window.enrollClass = async function(clsId) {
       hideLoading();
       const nomes = {iniciante:'Iniciante', intermediario:'Intermediário', avancado:'Avançado',
         intermediario_avancado:'Intermediário/Avançado', feminino:'Feminino'};
-      showModal({ icon:'🎯', iconBg:'var(--danger-dim)', title:'Aula de outro nível',
+      showModal({ icon:icon('target'), iconBg:'var(--danger-dim)', title:'Aula de outro nível',
         text: student.nivel
           ? `Esta turma é ${nomes[cls0.nivel]||cls0.nivel}. Seu nível é ${nomes[student.nivel]||student.nivel}. Fale com o gestor se acha que deveria participar.`
           : 'O gestor ainda não definiu seu nível. Fale com ele para liberar suas aulas.',
@@ -1740,7 +1749,7 @@ window.enrollClass = async function(clsId) {
       const mins = Math.ceil((hoursUntil - minHours) * 60);
       hideLoading();
       showModal({
-        icon: tipo === 'mensalista' ? '⭐' : '🎫', iconBg:'var(--warning-dim)',
+        icon: tipo === 'mensalista' ? icon('star','ic-lg') : icon('ticket','ic-lg'), iconBg:'var(--warning-dim)',
         title:'Ainda não liberado',
         text:`${tipo === 'mensalista' ? 'Mensalistas' : 'Avulsos'} podem se inscrever a partir de ${minHours}h antes da aula. Abre em ${Math.floor(mins/60)}h ${mins%60}min.`,
         actions:[{label:'Entendi', style:'btn-outline', close:true}]
@@ -1804,7 +1813,7 @@ window.enrollClass = async function(clsId) {
     } else {
       confetti();
       showModal({
-        icon:'✅', iconBg:'var(--success-dim)',
+        icon:icon('circle-check'), iconBg:'var(--success-dim)',
         title:'Inscrição realizada!',
         text:'Você está inscrito! Fique atento — enviaremos a confirmação em breve.',
         actions:[{label:'Ótimo!', style:'btn-success', close:true}]
@@ -1828,10 +1837,10 @@ function screenStudentNotifs() {
   return `<div class="screen">
     <div class="topbar">
       <div class="topbar-back" onclick="App.go('${SCREENS.S_HOME}')">←</div>
-      <span class="topbar-title">🔔 Notificações</span>
+      <span class="topbar-title">${icon('bell')} Notificações</span>
     </div>
     <div id="notifs-list" style="padding:0 20px 100px;display:flex;flex-direction:column;gap:10px">
-      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>
     </div>
   </div>`;
 }
@@ -1843,12 +1852,12 @@ function loadNotifications() {
     .collection('students').doc(App.user.uid).collection('notifications');
   col.orderBy('createdAt','desc').limit(30).get().then(snap => {
     if (snap.empty) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-emoji">🔕</div>
+      list.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('bell-off')}</div>
         <div class="empty-title">Nada por aqui</div>
         <div class="empty-text">Avisos sobre suas aulas e fila aparecem aqui.</div></div>`;
       return;
     }
-    const icons = { class_cancelled:'❌', promoted:'🎉', removed:'🚫', info:'📣' };
+    const icons = { class_cancelled:icon('circle-x','ic-lg'), promoted:icon('party-popper','ic-lg'), removed:icon('ban','ic-lg'), info:icon('megaphone','ic-lg') };
     list.innerHTML = snap.docs.map(d => {
       const n = d.data();
       const when = n.createdAt?.toDate
@@ -1856,7 +1865,7 @@ function loadNotifications() {
         : '';
       return `<div class="card" style="${n.read?'opacity:.62':''}">
         <div class="flex gap-10">
-          <span style="font-size:22px">${icons[n.type]||'📣'}</span>
+          <span>${icons[n.type]||icon('megaphone','ic-lg')}</span>
           <div class="flex-1">
             <div class="t-h3">${esc(n.title)}</div>
             <div class="t-sm t-muted" style="margin-top:2px">${esc(n.text)}</div>
@@ -1874,7 +1883,7 @@ function loadNotifications() {
       batch.commit().catch(()=>{});
     }
   }).catch(() => {
-    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">🔕</div><div class="empty-title">Nada por aqui</div></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('bell-off')}</div><div class="empty-title">Nada por aqui</div></div>`;
   });
 }
 
@@ -1893,7 +1902,7 @@ function refreshNotifBadge() {
 
 function screenStudentClasses() {
   return `<div class="screen">
-    <div class="topbar"><span class="topbar-title">📋 Minhas Aulas</span></div>
+    <div class="topbar"><span class="topbar-title">${icon('clipboard-list')} Minhas Aulas</span></div>
     <div style="padding:0 20px 16px">
       <div class="tabs">
         <div class="tab active" id="tab-upcoming" onclick="switchClassTab('upcoming',this)">Próximas</div>
@@ -1901,7 +1910,7 @@ function screenStudentClasses() {
       </div>
     </div>
     <div id="my-classes-list" style="padding:0 20px;display:flex;flex-direction:column;gap:10px">
-      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>
     </div>
   </div>`;
 }
@@ -1918,7 +1927,7 @@ function loadMyClasses(type) {
   if (!list || !App.user || !App.arenaId) return;
   const uid = App.user.uid;
   const arenaId = App.arenaId;
-  list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
+  list.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>`;
   if (window._myClsUnsub) { try { window._myClsUnsub(); } catch(e){} }
   window._myClsUnsub = db.collectionGroup('enrollments')
     .where('studentId','==',uid).onSnapshot(snap => {
@@ -1946,8 +1955,8 @@ function loadMyClasses(type) {
     });
     if (!items.length) {
       list.innerHTML = type === 'past'
-        ? `<div class="empty-state"><div class="empty-emoji">📜</div><div class="empty-title">Sem histórico ainda</div></div>`
-        : `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Sem aulas marcadas</div><div class="empty-text">Inscreva-se em uma aula na aba Horários!</div></div>`;
+        ? `<div class="empty-state"><div class="empty-emoji">${icon('scroll')}</div><div class="empty-title">Sem histórico ainda</div></div>`
+        : `<div class="empty-state"><div class="empty-emoji">${icon('tree-palm')}</div><div class="empty-title">Sem aulas marcadas</div><div class="empty-text">Inscreva-se em uma aula na aba Horários!</div></div>`;
       return;
     }
     list.innerHTML = items.map(d => {
@@ -1969,7 +1978,7 @@ function loadMyClasses(type) {
           <button class="btn btn-outline btn-sm flex-1" onclick="cancelEnrollment('${clsId}','${d.id}',true)">Sair da fila (#${enr.waitlistPosition||'?'})</button>
         </div>` : ''}
       </div>`;
-    }).join('') || `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Sem aulas</div></div>`;
+    }).join('') || `<div class="empty-state"><div class="empty-emoji">${icon('tree-palm')}</div><div class="empty-title">Sem aulas</div></div>`;
   });
   App.unsubscribers.push(window._myClsUnsub);
 }
@@ -1979,7 +1988,7 @@ window.cancelEnrollment = async function(clsId, docId, isWaitlist) {
   const text  = isWaitlist
     ? 'Você sairá da fila de espera desta aula.'
     : 'Se houver fila de espera, o próximo aluno assume sua vaga automaticamente.';
-  confirmModal(title, text, '❌', async () => {
+  confirmModal(title, text, icon('circle-x','ic-lg'), async () => {
     showLoading();
     try {
       const uid = App.user.uid;
@@ -2049,7 +2058,7 @@ window.cancelEnrollment = async function(clsId, docId, isWaitlist) {
 // ═══════════════════════════════════════════════════════════
 function screenStudentRanking() {
   return `<div class="screen">
-    <div class="topbar"><span class="topbar-title">🏆 Ranking</span></div>
+    <div class="topbar"><span class="topbar-title">${icon('trophy')} Ranking</span></div>
     <div style="padding:0 20px 12px">
       <div class="tabs">
         <div class="tab active" id="rtab-month" onclick="switchRankTab('month',this)">Este mês</div>
@@ -2058,7 +2067,7 @@ function screenStudentRanking() {
       </div>
     </div>
     <div id="ranking-content">
-      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>
     </div>
   </div>`;
 }
@@ -2073,7 +2082,7 @@ function liveStudentRanking() { loadRanking('month'); }
 function loadRanking(type) {
   const c = document.getElementById('ranking-content');
   if (!c || !App.arenaId) return;
-  c.innerHTML = `<div class="empty-state"><div class="empty-emoji">⌛</div></div>`;
+  c.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>`;
 
   if (type === 'feed') { loadCommunityFeed(c); return; }
 
@@ -2081,7 +2090,7 @@ function loadRanking(type) {
   db.collection('arenas').doc(App.arenaId).collection('students')
     .orderBy(field,'desc').limit(20).get().then(snap => {
       if (snap.empty) {
-        c.innerHTML = `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Ranking vazio</div><div class="empty-text">Participe de aulas para aparecer no ranking!</div></div>`;
+        c.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('tree-palm')}</div><div class="empty-title">Ranking vazio</div><div class="empty-text">Participe de aulas para aparecer no ranking!</div></div>`;
         return;
       }
       // Mês: corrige fichas de meses anteriores (valem 0) e reordena
@@ -2089,7 +2098,7 @@ function loadRanking(type) {
         val: type === 'month' ? effMonthClasses(d.data()) : (d.data().totalClasses || 0) }));
       lista = lista.filter(x => x.val > 0).sort((a,b) => b.val - a.val).slice(0,20);
       if (!lista.length) {
-        c.innerHTML = `<div class="empty-state"><div class="empty-emoji">🏖️</div><div class="empty-title">Ranking vazio</div><div class="empty-text">Participe de aulas para aparecer no ranking!</div></div>`;
+        c.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('tree-palm')}</div><div class="empty-title">Ranking vazio</div><div class="empty-text">Participe de aulas para aparecer no ranking!</div></div>`;
         return;
       }
       const top3 = lista.slice(0,3);
@@ -2103,7 +2112,7 @@ function loadRanking(type) {
             <div class="podium-stand">2</div>
           </div>` : ''}
           ${top3.length >= 1 ? `<div class="podium-item podium-1">
-            <div class="podium-crown">👑</div>
+            <div class="podium-crown">${icon('crown')}</div>
             <div>${renderAvatar(top3[0].data,'avatar-md')}</div>
             <div class="t-sm t-center" style="font-weight:700">${esc((top3[0].data.name||'').split(' ')[0])}</div>
             <div class="podium-stand">1</div>
@@ -2125,7 +2134,7 @@ function loadRanking(type) {
                 <div class="t-h3">${esc(data.name)||'—'} ${isMe?'<span style="color:var(--primary)">(você)</span>':''}</div>
                 <div class="t-xs t-muted">${data.badges?.length||0} emblemas</div>
               </div>
-              <span class="rank-points">🏅 ${x.val}</span>
+              <span class="badge badge-primary">${x.val}</span>
             </div>`;
           }).join('')}
         </div>`;
@@ -2137,7 +2146,7 @@ function loadCommunityFeed(c) {
   db.collection('arenas').doc(App.arenaId).collection('feed')
     .orderBy('createdAt','desc').limit(20).get().then(snap => {
       if (snap.empty) {
-        c.innerHTML = `<div class="empty-state"><div class="empty-emoji">💬</div><div class="empty-title">Nenhuma novidade</div><div class="empty-text">As conquistas da turma aparecerão aqui!</div></div>`;
+        c.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('message-circle')}</div><div class="empty-title">Nenhuma novidade</div><div class="empty-text">As conquistas da turma aparecerão aqui!</div></div>`;
         return;
       }
       c.innerHTML = snap.docs.map(d => {
@@ -2188,16 +2197,16 @@ function screenStudentProfile() {
   const p = App.profile || {};
   const totalBadges = BADGES.length;
   const earned = p.badges || [];
-  const nivelBadge = p.nivel ? '<span class="badge ' + (p.nivel==='iniciante'?'badge-success':p.nivel==='intermediario'?'badge-warning':p.nivel==='avancado'?'badge-danger':p.nivel==='feminino'?'badge-accent':'badge-muted') + '">' + (p.nivel==='iniciante'?'🟢':p.nivel==='intermediario'?'🟡':p.nivel==='avancado'?'🔴':p.nivel==='feminino'?'🩷':'🟠') + ' ' + p.nivel + '</span>' : '';
-  const tipoBadge = p.tipo ? '<span class="badge ' + (p.tipo==='mensalista'?'badge-primary':'badge-muted') + '">' + (p.tipo==='mensalista'?'⭐ Mensalista — inscrições ' + getEnrollWindowHours('mensalista') + 'h antes':'🎫 Avulso — inscrições ' + getEnrollWindowHours('avulso') + 'h antes') + '</span>' : '';
-  const arenaBtn = !p.arenaId ? '<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="joinArena()">🏟️ Entrar em uma arena</button>' : '';
+  const nivelBadge = p.nivel ? `<span class="badge ${p.nivel==='iniciante'?'badge-success':p.nivel==='intermediario'?'badge-warning':p.nivel==='avancado'?'badge-danger':p.nivel==='feminino'?'badge-accent':'badge-muted'}">${lvlDot(p.nivel)} ${p.nivel}</span>` : '';
+  const tipoBadge = p.tipo ? `<span class="badge ${p.tipo==='mensalista'?'badge-primary':'badge-muted'}">${p.tipo==='mensalista' ? icon('star','ic-sm')+' Mensalista — inscrições '+getEnrollWindowHours('mensalista')+'h antes' : icon('ticket','ic-sm')+' Avulso — inscrições '+getEnrollWindowHours('avulso')+'h antes'}</span>` : '';
+  const arenaBtn = !p.arenaId ? `<button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="joinArena()">${icon('warehouse')} Entrar em uma arena</button>` : '';
   return `<div class="screen">
     <div class="profile-header">
       <div onclick="uploadProfilePhoto()" style="position:relative;cursor:pointer;display:inline-block">
         ${renderAvatar(p,'avatar-xl')}
         <div style="position:absolute;bottom:2px;right:2px;width:30px;height:30px;
           background:var(--primary);border-radius:50%;display:flex;align-items:center;
-          justify-content:center;font-size:15px;border:2px solid var(--bg)">📷</div>
+          justify-content:center;font-size:15px;border:2px solid var(--bg)">${icon('camera')}</div>
       </div>
       <div class="t-h1">${esc(p.name)||'Aluno'}</div>
       <div class="t-sm t-muted">${esc(p.email)}</div>
@@ -2208,11 +2217,11 @@ function screenStudentProfile() {
       <div class="profile-stats" style="margin-top:16px">
         <div class="profile-stat"><div class="profile-stat-val">${p.totalClasses||0}</div><div class="profile-stat-lbl">Total aulas</div></div>
         <div class="profile-stat"><div class="profile-stat-val">${effMonthClasses(p)}</div><div class="profile-stat-lbl">Este mês</div></div>
-        <div class="profile-stat"><div class="profile-stat-val">${p.streakWeeks||0}🔥</div><div class="profile-stat-lbl">Sequência</div></div>
+        <div class="profile-stat"><div class="profile-stat-val">${p.streakWeeks||0}${icon('flame','ic-sm')}</div><div class="profile-stat-lbl">Sequência</div></div>
       </div>
     </div>
     <div class="section-header">
-      <span class="section-title">🏅 Emblemas (${earned.length}/${totalBadges})</span>
+      <span class="section-title">${icon('medal')} Emblemas (${earned.length}/${totalBadges})</span>
     </div>
     <div class="progress-bar" style="margin:0 20px 12px">
       <div class="progress-fill" style="width:${Math.round(earned.length/totalBadges*100)}%"></div>
@@ -2226,17 +2235,17 @@ function screenStudentProfile() {
     <div class="settings-group" style="margin-top:16px">
       <div class="settings-label">Conta</div>
       <div class="settings-item" onclick="toggleBiometric()">
-        <div class="settings-icon si-blue">🔐</div>
+        <div class="settings-icon si-blue">${icon('lock')}</div>
         <div class="flex-1"><div class="t-h3">Bloqueio por biometria</div><div class="t-xs t-muted">Pede digital ou Face ID ao abrir o app</div></div>
         <span class="settings-chevron">›</span>
       </div>
       <div class="settings-item" onclick="App.go('${SCREENS.FORGOT}')">
-        <div class="settings-icon si-orange">🔑</div>
+        <div class="settings-icon si-orange">${icon('key-round')}</div>
         <div class="flex-1"><div class="t-h3">Alterar senha</div><div class="t-xs t-muted">Redefina sua senha de acesso</div></div>
         <span class="settings-chevron">›</span>
       </div>
       <div class="settings-item" onclick="logoutUser()">
-        <div class="settings-icon si-red">🚪</div>
+        <div class="settings-icon si-red">${icon('log-out')}</div>
         <div class="flex-1"><div class="t-h3">Sair</div><div class="t-xs t-muted">Encerrar sessão</div></div>
         <span class="settings-chevron">›</span>
       </div>
@@ -2283,7 +2292,7 @@ window.showBadgeDetail = function(badgeId, isEarned) {
 
    window.joinArena = function() {
   showModal({
-    icon:'🏟️', iconBg:'var(--primary-dim)',
+    icon:icon('warehouse'), iconBg:'var(--primary-dim)',
     title:'Entrar em uma arena',
     text:'Digite o código fornecido pelo gestor da sua arena:',
     html:`<div style="margin-top:16px">
@@ -2321,7 +2330,7 @@ window.showBadgeDetail = function(badgeId, isEarned) {
       hideLoading();
       confetti();
       showModal({
-        icon:'🎉', iconBg:'var(--success-dim)',
+        icon:icon('party-popper'), iconBg:'var(--success-dim)',
         title:'Bem-vindo!',
         text:`Você entrou na ${arena.name}! O gestor vai configurar seu nível em breve.`,
         actions:[{label:'Ótimo!', style:'btn-success', close:true}],
@@ -2335,7 +2344,7 @@ window.showBadgeDetail = function(badgeId, isEarned) {
 };
 window.toggleBiometric = async function() {
   if (localStorage.getItem('af_lock')) {
-    confirmModal('Desativar bloqueio?','O app abrirá sem pedir sua digital ou Face ID.','🔐', () => {
+    confirmModal('Desativar bloqueio?','O app abrirá sem pedir sua digital ou Face ID.',icon('lock','ic-lg'), () => {
       localStorage.removeItem('af_lock');
       showToast('Bloqueio por biometria desativado','warning');
     });
@@ -2366,7 +2375,7 @@ window.toggleBiometric = async function() {
   }
 };
 window.logoutUser = function() {
-  confirmModal('Sair da conta?','Você precisará fazer login novamente.','🚪', async () => {
+  confirmModal('Sair da conta?','Você precisará fazer login novamente.',icon('log-out','ic-lg'), async () => {
     localStorage.removeItem('af_lock');
     App._unlocked = false;
     await auth.signOut();
@@ -2381,10 +2390,9 @@ function screenAdminHome() {
   const g = App.profile || {};
   return `<div class="screen">
     <div class="home-hero" style="${(a.coverBase64||a.photoBase64) ? 'background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.92)),url(' + JSON.stringify(a.coverBase64||a.photoBase64) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);'}">
-      <div class="brand-row">Arena<span>Flow</span></div>
       <div class="flex items-center justify-between">
         <div class="home-greeting">
-          <small>👋 Fala, gestor!</small>${esc(a.name)||'Arena'}
+          <small>Painel da Arena</small>${esc(a.name)||'Arena'} ${icon('warehouse','ic-sm')}
         </div>
         <div class="avatar avatar-md" style="background:var(--accent-dim);color:var(--accent)"
           onclick="App.go('${SCREENS.A_SETTINGS}')">${getInitials(g.name||'A')}</div>
@@ -2400,11 +2408,11 @@ function screenAdminHome() {
     </div>
     <div id="adm-alerts-section"></div>
     <div class="section-header">
-      <span class="section-title">📅 Aulas de hoje</span>
+      <span class="section-title">${icon('calendar-days')} Aulas de hoje</span>
       <span class="section-action" onclick="App.go('${SCREENS.A_SCHEDULE}')">Ver agenda</span>
     </div>
     <div id="adm-today-classes" style="padding:0 20px;display:flex;flex-direction:column;gap:10px">
-      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>
     </div>
     <div style="padding:20px 20px 0">
       <button class="btn btn-primary btn-full" onclick="App.go('${SCREENS.A_CREATE}')">
@@ -2441,7 +2449,7 @@ function liveAdminHome() {
       const tc = document.getElementById('adm-today-classes');
       if (!tc) return;
       if (cls.length === 0) {
-        tc.innerHTML = `<div class="empty-state" style="padding:32px 0"><div class="empty-emoji">📭</div><div class="empty-title">Sem aulas hoje</div><div class="empty-text">Crie uma aula para começar!</div></div>`;
+        tc.innerHTML = `<div class="empty-state" style="padding:32px 0"><div class="empty-emoji">${icon('inbox')}</div><div class="empty-title">Sem aulas hoje</div><div class="empty-text">Crie uma aula para começar!</div></div>`;
         return;
       }
       tc.innerHTML = cls.map(d => {
@@ -2452,7 +2460,7 @@ function liveAdminHome() {
             <div>
               <div class="t-h3">${c.modality||'Aula'}</div>
               <div class="t-sm t-muted">${c.startTime} – ${c.endTime}${c.court?' • '+c.court:''}</div>
-              ${c.nivel ? '<span class="badge ' + (c.nivel==='iniciante'?'badge-success':c.nivel==='intermediario'?'badge-warning':c.nivel==='avancado'?'badge-danger':c.nivel==='feminino'?'badge-accent':'badge-muted') + '" style="margin-top:4px;display:inline-flex">' + (c.nivel==='iniciante'?'🟢':c.nivel==='intermediario'?'🟡':c.nivel==='avancado'?'🔴':c.nivel==='feminino'?'🩷':'🟠') + ' ' + c.nivel + '</span>' : ''}
+              ${c.nivel ? `<span class="badge ${c.nivel==='iniciante'?'badge-success':c.nivel==='intermediario'?'badge-warning':c.nivel==='avancado'?'badge-danger':c.nivel==='feminino'?'badge-accent':'badge-muted'}" style="margin-top:4px;display:inline-flex">${lvlDot(c.nivel)} ${c.nivel}</span>` : ''}
             </div>
             <div class="t-center">
               <div class="t-h2" style="color:var(--primary)">${c.spotsUsed||0}/${c.maxSpots}</div>
@@ -2481,7 +2489,7 @@ function liveAdminHome() {
 // ═══════════════════════════════════════════════════════════
 function screenAdminSchedule() {
   return `<div class="screen">
-    <div class="topbar"><span class="topbar-title">📅 Agenda</span></div>
+    <div class="topbar"><span class="topbar-title">${icon('calendar-days')} Agenda</span></div>
     <div class="chip-row" id="mg-chips">
       <button class="chip active" onclick="mgSetFilter('today',this)">Hoje</button>
       <button class="chip" onclick="mgSetFilter('week',this)">Semana</button>
@@ -2490,9 +2498,9 @@ function screenAdminSchedule() {
       <button class="chip" onclick="mgSetFilter('cancelled',this)">Canceladas</button>
     </div>
     <div id="admin-classes-list" style="padding:0 20px 90px;display:flex;flex-direction:column;gap:10px">
-      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>
     </div>
-    <button class="fab" onclick="App.go('${SCREENS.A_CREATE}')">＋</button>
+    <button class="fab" onclick="App.go('${SCREENS.A_CREATE}')">${icon('plus','ic-lg')}</button>
   </div>`;
 }
 
@@ -2514,7 +2522,7 @@ async function mgLoadClasses() {
     _mgClasses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     mgRender();
   } catch(e) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">⚠️</div>
+    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('triangle-alert')}</div>
       <div class="empty-title">Erro ao carregar aulas</div></div>`;
   }
 }
@@ -2550,11 +2558,11 @@ function mgRender() {
 
   if (!itens.length) {
     const vazios = {
-      today:     ['🌤️','Nenhuma aula hoje'],
-      week:      ['📭','Sem aulas nesta semana'],
-      upcoming:  ['📭','Nenhuma aula futura'],
-      past:      ['🕰️','Nenhuma aula passada'],
-      cancelled: ['✨','Nenhuma aula cancelada']
+      today:     [icon('sun'),'Nenhuma aula hoje'],
+      week:      [icon('inbox'),'Sem aulas nesta semana'],
+      upcoming:  [icon('inbox'),'Nenhuma aula futura'],
+      past:      [icon('clock'),'Nenhuma aula passada'],
+      cancelled: [icon('sparkles'),'Nenhuma aula cancelada']
     };
     const [emo, txt] = vazios[_mgFilter] || vazios.upcoming;
     list.innerHTML = `<div class="empty-state" style="padding:32px 0">
@@ -2585,22 +2593,22 @@ function mgCard(c, hoje) {
   const concluida = c.status === 'done';
   const pct = Math.round((c.spotsUsed||0)/(c.maxSpots||1)*100);
   const nivelBadge = c.nivel
-    ? `<span class="badge ${c.nivel==='iniciante'?'badge-success':c.nivel==='intermediario'?'badge-warning':c.nivel==='avancado'?'badge-danger':c.nivel==='feminino'?'badge-accent':'badge-muted'} badge-sm">${c.nivel==='iniciante'?'🟢':c.nivel==='intermediario'?'🟡':c.nivel==='avancado'?'🔴':c.nivel==='feminino'?'🩷':'🟠'} ${c.nivel}</span>`
+    ? `<span class="badge ${c.nivel==='iniciante'?'badge-success':c.nivel==='intermediario'?'badge-warning':c.nivel==='avancado'?'badge-danger':c.nivel==='feminino'?'badge-accent':'badge-muted'} badge-sm">${lvlDot(c.nivel)} ${c.nivel}</span>`
     : '';
   const stBadge = cancelada ? '<span class="badge badge-danger badge-sm">Cancelada</span>'
-    : concluida ? '<span class="badge badge-muted badge-sm">✅ Concluída</span>'
+    : concluida ? `<span class="badge badge-muted badge-sm">${icon('circle-check')} Concluída</span>`
     : '';
   const acoes = (cancelada || concluida) ? '' : `
     <div class="flex" style="gap:8px;margin-top:10px" onclick="event.stopPropagation()">
-      ${c.dateStr === hoje ? `<button class="btn btn-success btn-sm flex-1" onclick="openAttendanceMode('${c.id}')">📋 Chamada</button>` : ''}
-      <button class="btn btn-outline btn-sm flex-1" onclick="editClass('${c.id}')">✏️ Editar</button>
-      <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="adminCancelClass('${c.id}')">🗑️</button>
+      ${c.dateStr === hoje ? `<button class="btn btn-success btn-sm flex-1" onclick="openAttendanceMode('${c.id}')">${icon('clipboard-list')} Chamada</button>` : ''}
+      <button class="btn btn-outline btn-sm flex-1" onclick="editClass('${c.id}')">${icon('pencil')} Editar</button>
+      <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="adminCancelClass('${c.id}')">${icon('trash-2')}</button>
     </div>`;
 
   return `<div class="class-card status-${getClassStatus(c)}"${cancelada ? ' style="opacity:.55"' : ''} onclick="App.go('${SCREENS.A_CLASS}',{clsId:'${c.id}'})">
     <div class="flex items-center justify-between">
       <div>
-        <div class="t-h3">${esc(c.modality)||'Aula'} ${c.seriesId ? '🔁' : ''}</div>
+        <div class="t-h3">${esc(c.modality)||'Aula'} ${c.seriesId ? icon('repeat','ic-sm') : ''}</div>
         <div class="t-sm t-muted">${c.startTime||''} – ${c.endTime||''}${c.court ? ' • ' + esc(c.court) : ''}</div>
         <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">${nivelBadge}${stBadge}</div>
       </div>
@@ -2627,7 +2635,7 @@ function screenAdminClass() {
       <div></div>
     </div>
     <div id="cls-detail-body">
-      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>
     </div>
   </div>`;
 }
@@ -2671,7 +2679,7 @@ function renderAttendanceMode(clsId, cls) {
       const enrolled = snap.docs.filter(d =>
         ['invited','confirmed','waiting'].includes(d.data().status));
       if (!enrolled.length) {
-        body.innerHTML = `<div class="empty-state"><div class="empty-emoji">🤷</div>
+        body.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('user')}</div>
           <div class="empty-title">Ninguém inscrito</div>
           <div class="empty-text">Sem inscritos para chamar presença.</div>
           <button class="btn btn-outline btn-sm" style="margin-top:12px"
@@ -2684,7 +2692,7 @@ function renderAttendanceMode(clsId, cls) {
       body.innerHTML = `
         <div style="padding:0 20px 130px">
           <div class="card" style="margin-bottom:14px;text-align:center">
-            <div class="t-h3">✅ Chamada de presença</div>
+            <div class="t-h3">${icon('circle-check')} Chamada de presença</div>
             <div class="t-sm t-muted" style="margin-top:4px">Toque no aluno que <b>faltou</b>. Ao encerrar, as presenças contam nas estatísticas.</div>
           </div>
           ${enrolled.map(d => {
@@ -2693,11 +2701,11 @@ function renderAttendanceMode(clsId, cls) {
               style="cursor:pointer;border:1px solid var(--success);border-radius:12px;margin-bottom:8px">
               <div class="avatar avatar-sm">${getInitials(e.studentName||'?')}</div>
               <div class="flex-1"><div class="t-h3">${esc(e.studentName)||'—'}</div></div>
-              <span id="att-ico-${d.id}" style="font-size:22px">✅</span>
+              <span id="att-ico-${d.id}" style="font-size:22px">${icon('circle-check')}</span>
             </div>`;
           }).join('')}
           <button class="btn btn-success btn-full btn-lg" style="margin-top:14px"
-            onclick="finishAttendance('${clsId}')">🏁 Encerrar aula e salvar presenças</button>
+            onclick="finishAttendance('${clsId}')">${icon('flag')} Encerrar aula e salvar presenças</button>
           <button class="btn btn-ghost btn-full" style="margin-top:8px"
             onclick="App.go('${SCREENS.A_CLASS}',{clsId:'${clsId}'})">Cancelar chamada</button>
         </div>`;
@@ -2710,7 +2718,7 @@ window.toggleAttendance = function(uid) {
   const ico = document.getElementById('att-ico-' + uid);
   if (row) row.style.borderColor = window._attend[uid] ? 'var(--success)' : 'var(--danger)';
   if (row) row.style.opacity = window._attend[uid] ? '1' : '0.6';
-  if (ico) ico.textContent = window._attend[uid] ? '✅' : '❌';
+  if (ico) ico.innerHTML = window._attend[uid] ? icon('circle-check') : icon('circle-x');
 };
 
 window.finishAttendance = async function(clsId) {
@@ -2718,7 +2726,7 @@ window.finishAttendance = async function(clsId) {
   const total = Object.keys(window._attend||{}).length;
   confirmModal('Encerrar aula?',
     `${presentes} de ${total} presentes. As presenças contam no Total, no Mês, no streak e nos emblemas de cada aluno.`,
-    '🏁', async () => {
+    icon('flag','ic-lg'), async () => {
     showLoading();
     try {
       const arenaRef = db.collection('arenas').doc(App.arenaId);
@@ -2765,8 +2773,8 @@ window.finishAttendance = async function(clsId) {
           conquistas.push({ uid: snap.id, name: s.name || 'Aluno', badges: novos });
           // Notifica o aluno 🔔
           batch.set(notifRef(App.arenaId, snap.id), notifData('badge',
-            novos.length > 1 ? `${novos.length} novos emblemas! 🏅` : `Novo emblema: ${novos[0].emoji} ${novos[0].name}!`,
-            novos.map(b => `${b.emoji} ${b.name} — ${b.desc}`).join(' • '),
+            novos.length > 1 ? `${novos.length} novos emblemas! 🏅` : `Novo emblema: 🏅 ${novos[0].name}!`,
+            novos.map(b => `🏅 ${b.name} — ${b.desc}`).join(' • '),
             clsId));
         }
         batch.update(arenaRef.collection('students').doc(snap.id), upd);
@@ -2777,7 +2785,7 @@ window.finishAttendance = async function(clsId) {
         batch.set(arenaRef.collection('feed').doc(), {
           type: 'badge',
           authorName: c.name,
-          text: `conquistou ${c.badges.map(b => `${b.emoji} ${b.name}`).join(', ')}!`,
+          text: `conquistou 🏅 ${c.badges.map(b => b.name).join(', ')}!`,
           reactions: {},
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -2823,16 +2831,16 @@ function loadClassEnrollments(clsId, cls) {
           </div>
           ${cls.status === 'done'
             ? `<div class="card" style="border:1px solid var(--success);text-align:center">
-                <div class="t-h3" style="color:var(--success)">🏁 Aula encerrada</div>
+                <div class="t-h3" style="color:var(--success)">${icon('flag')} Aula encerrada</div>
                 <div class="t-sm t-muted" style="margin-top:4px">${cls.attendedCount ?? 0} presença(s) registrada(s)</div>
               </div>`
             : cls.status === 'cancelled' ? '' : `
           <div class="flex gap-8">
-            <button class="btn btn-primary flex-1" onclick="openAttendanceMode('${clsId}')">✅ Chamar presença</button>
-            <button class="btn btn-outline btn-sm" onclick="sendConfirmations('${clsId}')">📱 WhatsApp</button>
+            <button class="btn btn-primary flex-1" onclick="openAttendanceMode('${clsId}')">${icon('circle-check')} Chamar presença</button>
+            <button class="btn btn-outline btn-sm" onclick="sendConfirmations('${clsId}')">${icon('smartphone')} WhatsApp</button>
           </div>`}
         </div>
-        <div class="section-header"><span class="section-title">👥 Inscritos (${enrolled.length})</span></div>
+        <div class="section-header"><span class="section-title">${icon('users')} Inscritos (${enrolled.length})</span></div>
         ${enrolled.length ? enrolled.map(d => {
           const e = d.data();
           return `<div class="attend-row">
@@ -2843,7 +2851,7 @@ function loadClassEnrollments(clsId, cls) {
                 <span class="status-pill ${STATUS_CSS[e.status]||''}">${STATUS_LABELS[e.status]||e.status}</span>
               </div>
             </div>
-            <button class="btn btn-ghost btn-sm t-danger" onclick="removeEnrollment('${clsId}','${d.id}')">✕</button>
+            <button class="btn btn-ghost btn-sm t-danger" onclick="removeEnrollment('${clsId}','${d.id}')">${icon('x','ic-sm')}</button>
           </div>`;
         }).join('') : '<div class="t-muted t-center" style="padding:16px">Nenhum inscrito</div>'}
         ${waitlist.length ? `
@@ -2862,16 +2870,16 @@ function loadClassEnrollments(clsId, cls) {
         ` : ''}
         ${cls.status === 'cancelled'
           ? `<div class="card" style="margin-top:16px;border:1px solid var(--danger);text-align:center">
-              <div class="t-h3" style="color:var(--danger)">❌ Aula cancelada</div>
+              <div class="t-h3" style="color:var(--danger)">${icon('circle-x')} Aula cancelada</div>
               <div class="t-sm t-muted" style="margin-top:4px">Os alunos inscritos foram notificados.</div>
             </div>`
           : cls.status === 'done' ? '<div style="padding-bottom:110px"></div>'
           : `<div style="margin-top:16px;padding-bottom:110px">
-              ${cls.seriesId ? '<div class="t-sm t-dim" style="margin-bottom:10px;text-align:center">🔁 Esta aula faz parte de uma série semanal</div>' : ''}
+              ${cls.seriesId ? `<div class="t-sm t-dim" style="margin-bottom:10px;text-align:center">${icon('repeat')} Esta aula faz parte de uma série semanal</div>` : ''}
               <div class="flex gap-8">
-                <button class="btn btn-primary flex-1" onclick="editClass('${clsId}')">✏️ Editar</button>
+                <button class="btn btn-primary flex-1" onclick="editClass('${clsId}')">${icon('pencil')} Editar</button>
                 <button class="btn btn-outline flex-1" style="color:var(--danger);border-color:var(--danger)"
-                  onclick="adminCancelClass('${clsId}')">🗑️ Cancelar</button>
+                  onclick="adminCancelClass('${clsId}')">${icon('trash-2')} Cancelar</button>
               </div>
             </div>`}`;
     });
@@ -2887,7 +2895,7 @@ window.editClass = async function(clsId) {
     ['intermediario','🟡 Intermediário'],['avancado','🔴 Avançado'],
     ['intermediario_avancado','🟠 Intermediário/Avançado'],['feminino','🩷 Feminino']];
   showModal({
-    icon:'✏️', iconBg:'var(--primary-dim)',
+    icon:icon('pencil'), iconBg:'var(--primary-dim)',
     title:'Editar aula',
     html:`<div style="margin-top:14px;text-align:left">
       <div class="grid-2">
@@ -3031,7 +3039,7 @@ window.adminCancelClass = async function(clsId) {
 
   if (c0.seriesId) {
     showModal({
-      icon:'🗑️', iconBg:'var(--danger-dim)',
+      icon:icon('trash-2'), iconBg:'var(--danger-dim)',
       title:'Cancelar aula da série',
       text:'Esta aula faz parte de uma série semanal 🔁. O que deseja cancelar? Os inscritos serão notificados.',
       actions:[
@@ -3045,7 +3053,7 @@ window.adminCancelClass = async function(clsId) {
   } else {
     confirmModal('Cancelar esta aula?',
       'Ela sai da agenda dos alunos e todos os inscritos e a fila serão notificados.',
-      '🗑️', () => executar('one'));
+      icon('trash-2','ic-lg'), () => executar('one'));
   }
 };
 
@@ -3089,7 +3097,7 @@ window.promoteWaitlist = async function(clsId, studentDocId) {
 
 window.removeEnrollment = async function(clsId, studentDocId) {
   if (!App.arenaId) return;
-  confirmModal('Remover inscrição?','Se houver fila, o próximo aluno assume a vaga automaticamente.','❌', async () => {
+  confirmModal('Remover inscrição?','Se houver fila, o próximo aluno assume a vaga automaticamente.',icon('circle-x','ic-lg'), async () => {
     showLoading();
     try {
       const clsRef = db.collection('arenas').doc(App.arenaId).collection('classes').doc(clsId);
@@ -3146,7 +3154,7 @@ window.removeEnrollment = async function(clsId, studentDocId) {
 
 window.sendConfirmations = function(clsId) {
   showModal({
-    icon:'📱', iconBg:'var(--success-dim)',
+    icon:icon('smartphone'), iconBg:'var(--success-dim)',
     title:'Mensagem para o grupo',
     text:'Vou montar a mensagem de confirmação com a lista de inscritos, pronta para você enviar no grupo do WhatsApp da arena.',
     actions:[
@@ -3170,7 +3178,7 @@ window.sendConfirmations = function(clsId) {
         .sort((a,b) => (a.waitlistPosition||99) - (b.waitlistPosition||99))
         .map((e,i) => `${i+1}º ${e.studentName || 'Aluno'}`);
       const [y,m,dd] = (cls.dateStr||'').split('-');
-      let msg = `⚽ *${App.arena?.name || 'Arena'} — Confirmação de aula*\n`;
+      let msg = `🏐 *${App.arena?.name || 'Arena'} — Confirmação de aula*\n`;
       msg += `📅 ${dd}/${m} às ${cls.startTime}${cls.modality ? ' • ' + cls.modality : ''}\n\n`;
       msg += `*Confirmados (${confirmados.length}):*\n${confirmados.join('\n') || '—'}\n`;
       if (fila.length) msg += `\n*Fila de espera:*\n${fila.join('\n')}\n`;
@@ -3205,12 +3213,12 @@ function screenAdminCreate() {
      <div class="field">
         <label>Nível da turma</label>
         <select class="input" id="cls-nivel">
-          <option value="todos">🌍 Todos os níveis</option>
+          <option value="todos">${icon('globe')} Todos os níveis</option>
           <option value="iniciante">🟢 Iniciante</option>
           <option value="intermediario">🟡 Intermediário</option>
           <option value="avancado">🔴 Avançado</option>
           <option value="intermediario_avancado">🟠 Intermediário/Avançado</option>
-          <option value="feminino">🩷 Feminino</option>
+          <option value="feminino">${icon('heart')} Feminino</option>
         </select>
       </div>
       <div class="field">
@@ -3248,7 +3256,7 @@ function screenAdminCreate() {
         <input class="input" id="cls-spots" type="number" value="6" min="1" max="50">
       </div>
       <div class="field">
-        <label>🔁 Repetir</label>
+        <label>${icon('repeat')} Repetir</label>
         <select class="input" id="cls-repeat" onchange="document.getElementById('repeat-opts').style.display = this.value==='weekly' ? 'block' : 'none'">
           <option value="none">Não repete (aula única)</option>
           <option value="weekly">Toda semana, nos dias escolhidos</option>
@@ -3281,7 +3289,7 @@ function screenAdminCreate() {
         </select>
       </div>
       <button class="btn btn-primary btn-full btn-lg" id="btn-create-class">
-        ⚽ Criar aula e enviar convites
+        ${icon('volleyball')} Criar aula e enviar convites
       </button>
     </div>
   </div>`;
@@ -3337,7 +3345,7 @@ function attachAdminCreate() {
       hideLoading();
       confetti();
       showModal({
-        icon:'✅', iconBg:'var(--success-dim)',
+        icon:icon('circle-check'), iconBg:'var(--success-dim)',
         title: datas.length > 1 ? `${datas.length} aulas criadas!` : 'Aula criada!',
         text: datas.length > 1
           ? `Sua grade foi montada: ${datas.length} aulas de ${modality} criadas até ${datas[datas.length-1].split('-').reverse().join('/')}.`
@@ -3357,9 +3365,9 @@ function attachAdminCreate() {
 // ═══════════════════════════════════════════════════════════
 function screenAdminStudents() {
   return `<div class="screen">
-    <div class="topbar"><span class="topbar-title">👥 Alunos</span></div>
+    <div class="topbar"><span class="topbar-title">${icon('users')} Alunos</span></div>
     <div class="search-bar">
-      <span>🔍</span>
+      <span>${icon('search')}</span>
       <input type="search" placeholder="Buscar aluno..." id="student-search" oninput="filterStudents(this.value)">
     </div>
     <div class="chip-row">
@@ -3389,16 +3397,16 @@ function renderStudentList(students) {
   const list = document.getElementById('students-list');
   if (!list) return;
   if (!students.length) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">👥</div><div class="empty-title">Nenhum aluno</div></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('users')}</div><div class="empty-title">Nenhum aluno</div></div>`;
     return;
   }
   list.innerHTML = students.map(s => {
     const statusDot = {active:'dot-success', inactive:'dot-warning', blocked:'dot-danger'}[s.status||'active'];
     const nivelBadge = s.nivel
-      ? '<span class="badge ' + (s.nivel==='iniciante'?'badge-success':s.nivel==='intermediario'?'badge-warning':s.nivel==='avancado'?'badge-danger':s.nivel==='feminino'?'badge-accent':'badge-muted') + '">' + (s.nivel==='iniciante'?'🟢':s.nivel==='intermediario'?'🟡':s.nivel==='avancado'?'🔴':s.nivel==='feminino'?'🩷':'🟠') + ' ' + s.nivel + '</span>'
+      ? `<span class="badge ${s.nivel==='iniciante'?'badge-success':s.nivel==='intermediario'?'badge-warning':s.nivel==='avancado'?'badge-danger':s.nivel==='feminino'?'badge-accent':'badge-muted'}">${lvlDot(s.nivel)} ${s.nivel}</span>`
       : '<span class="badge badge-muted">sem nível</span>';
     const tipoBadge = s.tipo
-      ? '<span class="badge ' + (s.tipo==='mensalista'?'badge-primary':'badge-muted') + '">' + (s.tipo==='mensalista'?'⭐ Mensalista':'🎫 Avulso') + '</span>'
+      ? `<span class="badge ${s.tipo==='mensalista'?'badge-primary':'badge-muted'}">${s.tipo==='mensalista'?icon('star','ic-sm')+' Mensalista':icon('ticket','ic-sm')+' Avulso'}</span>`
       : '';
     return `<div class="arena-row" onclick="App.go('${SCREENS.A_STUDENT}',{uid:'${s.id}'})">
       ${renderAvatar(s, 'avatar-md')}
@@ -3427,7 +3435,7 @@ function screenAdminStudentDetail() {
       <div></div>
     </div>
     <div id="student-detail-body">
-      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>
     </div>
   </div>`;
 }
@@ -3466,7 +3474,7 @@ function liveAdminStudentDetail() {
         }
       } catch(e) { console.warn('auto-reparo aluno falhou:', e?.message); }
       if (!snap.exists) {
-        body.innerHTML = `<div class="empty-state"><div class="empty-emoji">❓</div><div class="empty-title">Aluno não encontrado</div></div>`;
+        body.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('search')}</div><div class="empty-title">Aluno não encontrado</div></div>`;
         return;
       }
     }
@@ -3481,11 +3489,11 @@ function liveAdminStudentDetail() {
         <div class="profile-stats" style="margin-top:16px">
           <div class="profile-stat"><div class="profile-stat-val">${s.totalClasses||0}</div><div class="profile-stat-lbl">Total</div></div>
           <div class="profile-stat"><div class="profile-stat-val">${effMonthClasses(s)}</div><div class="profile-stat-lbl">Mês</div></div>
-          <div class="profile-stat"><div class="profile-stat-val">${s.streakWeeks||0}🔥</div><div class="profile-stat-lbl">Streak</div></div>
+          <div class="profile-stat"><div class="profile-stat-val">${s.streakWeeks||0}${icon('flame','ic-sm')}</div><div class="profile-stat-lbl">Streak</div></div>
         </div>
       </div>
       <div class="section-header" style="margin-top:8px">
-        <span class="section-title">🎯 Nível e Tipo</span>
+        <span class="section-title">${icon('target')} Nível e Tipo</span>
       </div>
       <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:12px">
         <div class="field">
@@ -3496,20 +3504,20 @@ function liveAdminStudentDetail() {
             <option value="intermediario" ${s.nivel==='intermediario'?'selected':''}>🟡 Intermediário</option>
             <option value="avancado" ${s.nivel==='avancado'?'selected':''}>🔴 Avançado</option>
             <option value="intermediario_avancado" ${s.nivel==='intermediario_avancado'?'selected':''}>🟠 Intermediário/Avançado</option>
-            <option value="feminino" ${s.nivel==='feminino'?'selected':''}>🩷 Feminino</option>
+            <option value="feminino" ${s.nivel==='feminino'?'selected':''}>${icon('heart')} Feminino</option>
           </select>
         </div>
         <div class="field">
           <label>Tipo de aluno</label>
           <select class="input" id="student-tipo" onchange="updateStudentTipo('${uid}',this.value)">
             <option value="" ${!s.tipo?'selected':''}>Selecione o tipo...</option>
-            <option value="mensalista" ${s.tipo==='mensalista'?'selected':''}>⭐ Mensalista</option>
-            <option value="avulso" ${s.tipo==='avulso'?'selected':''}>🎫 Avulso</option>
+            <option value="mensalista" ${s.tipo==='mensalista'?'selected':''}>${icon('star')} Mensalista</option>
+            <option value="avulso" ${s.tipo==='avulso'?'selected':''}>${icon('ticket')} Avulso</option>
           </select>
         </div>
       </div>
       <div class="section-header" style="margin-top:8px">
-        <span class="section-title">📅 Aulas habilitadas</span>
+        <span class="section-title">${icon('calendar-days')} Aulas habilitadas</span>
       </div>
       <div style="padding:0 20px 16px">
         <div class="t-sm t-muted" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px">
@@ -3521,11 +3529,11 @@ function liveAdminStudentDetail() {
       <div style="padding:0 20px 110px">
         <div class="flex gap-10" style="margin-bottom:16px">
           ${s.status!=='blocked'
-            ? `<button class="btn btn-danger flex-1" onclick="blockStudent('${uid}')">⛔ Bloquear</button>`
-            : `<button class="btn btn-success flex-1" onclick="unblockStudent('${uid}')">✅ Desbloquear</button>`}
+            ? `<button class="btn btn-danger flex-1" onclick="blockStudent('${uid}')">${icon('ban')} Bloquear</button>`
+            : `<button class="btn btn-success flex-1" onclick="unblockStudent('${uid}')">${icon('circle-check')} Desbloquear</button>`}
         </div>
       </div>
-      <div class="section-header"><span class="section-title">🏅 Emblemas (${earned.length})</span></div>
+      <div class="section-header"><span class="section-title">${icon('medal')} Emblemas (${earned.length})</span></div>
       <div style="padding:0 20px 24px">
         <div class="badge-grid" style="grid-template-columns:repeat(auto-fill,minmax(72px,1fr))">
           ${BADGES.map(b => {
@@ -3594,7 +3602,7 @@ window.updateStudentTipo = async function(uid, tipo) {
 };
 
 window.blockStudent = async function(uid) {
-  confirmModal('Bloquear aluno?','O aluno perderá acesso ao app desta arena.','⛔', async () => {
+  confirmModal('Bloquear aluno?','O aluno perderá acesso ao app desta arena.',icon('ban','ic-lg'), async () => {
     await db.collection('arenas').doc(App.arenaId).collection('students').doc(uid).update({status:'blocked'});
     showToast('Aluno bloqueado','warning');
     liveAdminStudentDetail();
@@ -3611,9 +3619,9 @@ window.unblockStudent = async function(uid) {
 // ═══════════════════════════════════════════════════════════
 function screenAdminReports() {
   return `<div class="screen">
-    <div class="topbar"><span class="topbar-title">📊 Relatórios</span></div>
+    <div class="topbar"><span class="topbar-title">${icon('chart-column')} Relatórios</span></div>
     <div id="reports-body" style="padding:0 20px">
-      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>
     </div>
   </div>`;
 }
@@ -3636,7 +3644,7 @@ function liveAdminReports() {
       const occ = totalSpots ? Math.round(totalUsed/totalSpots*100) : 0;
       body.innerHTML = `
         <div class="alert-banner info" style="margin:16px 0 0">
-          <span class="alert-banner-icon">💡</span>
+          <span class="alert-banner-icon">${icon('lightbulb')}</span>
           <div class="alert-banner-text">Relatório de ${new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</div>
         </div>
         <div class="grid-2" style="margin-top:16px">
@@ -3646,11 +3654,11 @@ function liveAdminReports() {
           <div class="stat-card warning"><div class="stat-value">${totalWait}</div><div class="stat-label">Fila de espera</div></div>
         </div>
         ${occ < 50 ? `<div class="alert-banner warning" style="margin-top:16px">
-          <span class="alert-banner-icon">⚠️</span>
+          <span class="alert-banner-icon">${icon('triangle-alert')}</span>
           <div class="alert-banner-text">Taxa de ocupação abaixo de 50%. Considere estratégias para aumentar o engajamento.</div>
         </div>` : ''}
         ${occ >= 90 ? `<div class="alert-banner success" style="margin-top:16px">
-          <span class="alert-banner-icon">🚀</span>
+          <span class="alert-banner-icon">${icon('rocket')}</span>
           <div class="alert-banner-text">Excelente! Arena com mais de 90% de ocupação. Considere abrir novas turmas.</div>
         </div>` : ''}`;
     });
@@ -3663,11 +3671,11 @@ function screenAdminSettings() {
   const a = App.arena || {};
   const s = a.settings || {};
   return `<div class="screen">
-    <div class="topbar"><span class="topbar-title">⚙️ Configurações</span></div>
+    <div class="topbar"><span class="topbar-title">${icon('settings')} Configurações</span></div>
     <div class="settings-group">
       <div class="settings-label">Arena</div>
       <div class="settings-item">
-        <div class="settings-icon si-green">🎫</div>
+        <div class="settings-icon si-green">${icon('ticket')}</div>
         <div class="flex-1">
           <div class="t-h3">Código para alunos</div>
           <div style="font-size:22px;font-weight:800;letter-spacing:4px;color:var(--success)">${a.studentCode||'—'}</div>
@@ -3678,7 +3686,7 @@ function screenAdminSettings() {
     </div>
     ${ (a.gestorUid && App.user && a.gestorUid === App.user.uid) ? `
     <div class="settings-group">
-      <div class="settings-label">🎨 Identidade da arena</div>
+      <div class="settings-label">${icon('palette')} Identidade da arena</div>
       <div style="padding:0 20px 12px">
         <div class="t-sm t-muted" style="margin-bottom:12px">A foto e a cor aparecem para todos os alunos da sua arena.</div>
         <div style="position:relative;height:120px;border-radius:14px;overflow:hidden;margin-bottom:12px;background:#4A1B0C"
@@ -3690,7 +3698,7 @@ function screenAdminSettings() {
           <div style="position:absolute;bottom:8px;left:12px;font-size:12px;color:#FAECE7;font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.6)">${esc(a.name)||'Sua arena'}</div>
         </div>
         <input type="file" id="cover-file" accept="image/*" style="display:none" onchange="uploadArenaCover(event)">
-        <button class="btn btn-outline btn-full" onclick="document.getElementById('cover-file').click()">📷 Trocar foto da capa</button>
+        <button class="btn btn-outline btn-full" onclick="document.getElementById('cover-file').click()">${icon('camera')} Trocar foto da capa</button>
 
         <div class="field" style="margin-top:16px">
           <label>Cor de destaque da arena</label>
@@ -3710,7 +3718,7 @@ function screenAdminSettings() {
       </div>
     </div>
     <div class="settings-group">
-      <div class="settings-label">👥 Equipe</div>
+      <div class="settings-label">${icon('users')} Equipe</div>
       <div style="padding:0 20px 12px">
         <div class="t-sm t-muted" style="margin-bottom:12px">
           Funcionários podem criar aulas e gerenciar alunos e filas.
@@ -3731,7 +3739,7 @@ function screenAdminSettings() {
       <div class="settings-label">WhatsApp</div>
       <div style="padding:0 20px 12px">
         <div class="wa-status disconnected" id="wa-status" style="margin-bottom:12px">
-          <span>⌛</span> Verificando configuração...
+          <span>${icon('hourglass')}</span> Verificando configuração...
         </div>
         <div class="field">
           <label>Token da API (Meta WhatsApp Cloud)</label>
@@ -3770,13 +3778,13 @@ function screenAdminSettings() {
           </select>
         </div>
         <div class="field" style="margin-top:12px">
-          <label>⭐ Mensalista: inscrição abre (horas antes da aula)</label>
+          <label>${icon('star')} Mensalista: inscrição abre (horas antes da aula)</label>
           <select class="input" id="enroll-mens-hours">
             ${[6,12,24,48,72,168].map(h => `<option value="${h}" ${(s.enrollMensalistaHours??24)===h?'selected':''}>${h>=24?(h/24)+' dia'+(h>24?'s':''):h+' horas'} antes</option>`).join('')}
           </select>
         </div>
         <div class="field" style="margin-top:12px">
-          <label>🎫 Avulso: inscrição abre (horas antes da aula)</label>
+          <label>${icon('ticket')} Avulso: inscrição abre (horas antes da aula)</label>
           <select class="input" id="enroll-av-hours">
             ${[3,6,12,24,48].map(h => `<option value="${h}" ${(s.enrollAvulsoHours??12)===h?'selected':''}>${h>=24?(h/24)+' dia'+(h>24?'s':''):h+' horas'} antes</option>`).join('')}
           </select>
@@ -3787,7 +3795,7 @@ function screenAdminSettings() {
     <div class="settings-group">
       <div class="settings-label">Conta</div>
       <div class="settings-item" onclick="logoutUser()">
-        <div class="settings-icon si-red">🚪</div>
+        <div class="settings-icon si-red">${icon('log-out')}</div>
         <div class="flex-1"><div class="t-h3">Sair</div></div>
         <span class="settings-chevron">›</span>
       </div>
@@ -3804,7 +3812,7 @@ function attachAdminSettings() {
     const d = snap.exists ? snap.data() : null;
     if (st) {
       st.className = `wa-status ${d?.token ? 'connected' : 'disconnected'}`;
-      st.innerHTML = d?.token ? '<span>✅</span> WhatsApp conectado' : '<span>❌</span> WhatsApp não configurado';
+      st.innerHTML = d?.token ? `<span>${icon('circle-check')}</span> WhatsApp conectado` : `<span>${icon('circle-x')}</span> WhatsApp não configurado`;
     }
     const tk = document.getElementById('wa-token');
     const ph = document.getElementById('wa-phone-id');
@@ -3904,7 +3912,7 @@ window.saveArenaTheme = async function() {
 window.editArenaInfo = function() {
   const a = App.arena || {};
   showModal({
-    icon:'🏟️', iconBg:'var(--primary-dim)',
+    icon:icon('warehouse'), iconBg:'var(--primary-dim)',
     title:'Informações da Arena',
     html:`<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">
       <input class="input" id="edit-arena-name" placeholder="Nome da arena" value="${esc(a.name)||''}">
@@ -3937,9 +3945,9 @@ function screenSAHome() {
     <div class="topbar">
       <div>
         <div class="t-label t-dim">Superadmin</div>
-        <div class="topbar-title">ArenaFlow 👑</div>
+        <div class="topbar-title">ArenaFlow ${icon('crown','ic-sm')}</div>
       </div>
-      <div class="avatar avatar-md" style="background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff">SA</div>
+      <div class="avatar avatar-md" style="background:linear-gradient(135deg,var(--primary),#6B4EFF);color:#fff">SA</div>
     </div>
     <div style="padding:0 20px 16px">
       <div class="mrr-hero">
@@ -3956,7 +3964,7 @@ function screenSAHome() {
     </div>
     <div id="sa-alerts" style="padding:16px 20px 0"></div>
     <div class="section-header" style="margin-top:8px">
-      <span class="section-title">🏟️ Arenas recentes</span>
+      <span class="section-title">${icon('warehouse')} Arenas recentes</span>
       <span class="section-action" onclick="App.go('${SCREENS.SA_ARENAS}')">Ver todas</span>
     </div>
     <div id="sa-recent-arenas"></div>
@@ -3992,7 +4000,7 @@ function liveSAHome() {
     const al = document.getElementById('sa-alerts');
     if (al) al.innerHTML = alerts.slice(0,3).map(a =>
       `<div class="alert-banner ${a.type}" style="margin-bottom:8px">
-        <span class="alert-banner-icon">${a.type==='danger'?'🔴':'🟡'}</span>
+        <span class="alert-banner-icon">${a.type==='danger'?'<i class="dot dot-red"></i>':'<i class="dot dot-yellow"></i>'}</span>
         <div class="alert-banner-text">${a.msg}</div>
       </div>`
     ).join('');
@@ -4002,7 +4010,7 @@ function liveSAHome() {
       const a = d.data();
       const statusMap = {active:'badge-success', trial:'badge-warning', suspended:'badge-danger'};
       return `<div class="arena-row" onclick="App.go('${SCREENS.SA_ARENA}',{arenaId:'${d.id}'})">
-        <div class="arena-icon">🏟️</div>
+        <div class="arena-icon">${icon('warehouse')}</div>
         <div class="flex-1">
           <div class="t-h3">${esc(a.name)||'—'}</div>
           <div class="t-xs t-muted">${esc(a.city)||'—'} • R$${a.planValue||199}/mês</div>
@@ -4019,13 +4027,13 @@ function liveSAHome() {
 // ═══════════════════════════════════════════════════════════
 function screenSAArenas() {
   return `<div class="screen">
-    <div class="topbar"><span class="topbar-title">🏟️ Arenas</span></div>
+    <div class="topbar"><span class="topbar-title">${icon('warehouse')} Arenas</span></div>
     <div class="search-bar">
-      <span>🔍</span>
+      <span>${icon('search')}</span>
       <input type="search" placeholder="Buscar arena..." id="arena-search" oninput="filterArenas(this.value)">
     </div>
     <div id="arenas-list"></div>
-    <button class="fab" onclick="App.go('${SCREENS.SA_NEW_ARENA}')">＋</button>
+    <button class="fab" onclick="App.go('${SCREENS.SA_NEW_ARENA}')">${icon('plus','ic-lg')}</button>
   </div>`;
 }
 window._allArenas = [];
@@ -4046,7 +4054,7 @@ function renderArenasList(arenas) {
   const list = document.getElementById('arenas-list');
   if (!list) return;
   if (!arenas.length) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">🏟️</div><div class="empty-title">Nenhuma arena</div><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="App.go('${SCREENS.SA_NEW_ARENA}')">Cadastrar arena</button></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-emoji">${icon('warehouse')}</div><div class="empty-title">Nenhuma arena</div><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="App.go('${SCREENS.SA_NEW_ARENA}')">Cadastrar arena</button></div>`;
     return;
   }
   const statusMap = {active:'badge-success', trial:'badge-warning', suspended:'badge-danger'};
@@ -4056,7 +4064,7 @@ function renderArenasList(arenas) {
      <div class="arena-icon" style="overflow:hidden;padding:0">
         ${a.photoBase64
           ? `<img src="${a.photoBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r-sm)">`
-          : `<span style="font-size:20px;display:flex;align-items:center;justify-content:center;height:100%">🏟️</span>`}
+          : `<span style="font-size:20px;display:flex;align-items:center;justify-content:center;height:100%">${icon('warehouse')}</span>`}
       </div>
       <div class="flex-1">
         <div class="t-h3">${esc(a.name)||'—'}</div>
@@ -4081,7 +4089,7 @@ function screenSAArenaDetail() {
       <div></div>
     </div>
     <div id="sa-arena-body">
-      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>
     </div>
   </div>`;
 }
@@ -4113,7 +4121,7 @@ function liveAdminStudents() {
         <div style="padding:0 20px">
           <div class="card" style="margin-bottom:16px">
             <div class="flex items-center gap-12" style="margin-bottom:16px">
-              <div class="arena-icon" style="width:56px;height:56px;font-size:26px;border-radius:14px">🏟️</div>
+              <div class="arena-icon" style="width:56px;height:56px;font-size:26px;border-radius:14px">${icon('warehouse')}</div>
               <div>
                 <div class="t-h2">${esc(a.name)||'—'}</div>
                 <div class="t-sm t-muted">${esc(a.city)||'—'}${a.address?` • ${esc(a.address)}`:''}</div>
@@ -4128,25 +4136,25 @@ function liveAdminStudents() {
           </div>
 
           <div class="card" style="margin-bottom:16px">
-            <div class="t-label t-dim" style="margin-bottom:10px">👤 Dono da arena</div>
+            <div class="t-label t-dim" style="margin-bottom:10px">${icon('user')} Dono da arena</div>
             <div class="t-h3">${esc(a.gestorName)||'—'}</div>
             <div class="t-sm t-muted">${esc(a.gestorEmail)||'—'}${a.gestorPhone?` • ${esc(a.gestorPhone)}`:''}</div>
             <div class="flex items-center gap-8" style="margin-top:10px">
-              <span class="badge ${a.gestorUid?'badge-success':'badge-warning'}">${a.gestorUid?'✅ Convite resgatado':'⏳ Aguardando resgate'}</span>
+              <span class="badge ${a.gestorUid?'badge-success':'badge-warning'}">${a.gestorUid?icon('circle-check','ic-sm')+' Convite resgatado':icon('hourglass','ic-sm')+' Aguardando resgate'}</span>
               ${!a.gestorUid ? `<span class="t-sm t-dim">Código: <b>${a.inviteCode||'—'}</b></span>` : ''}
             </div>
             <div class="flex gap-8" style="margin-top:14px">
-              <button class="btn btn-outline btn-sm flex-1" onclick="changeArenaGestor('${snap.id}')">✏️ Trocar dono</button>
-              ${!a.gestorUid ? `<button class="btn btn-outline btn-sm flex-1" onclick="regenArenaInvite('${snap.id}')">🔄 Novo código</button>` : ''}
+              <button class="btn btn-outline btn-sm flex-1" onclick="changeArenaGestor('${snap.id}')">${icon('pencil')} Trocar dono</button>
+              ${!a.gestorUid ? `<button class="btn btn-outline btn-sm flex-1" onclick="regenArenaInvite('${snap.id}')">${icon('refresh-cw')} Novo código</button>` : ''}
             </div>
             ${(a.staffEmails||[]).length ? `<div class="t-sm t-dim" style="margin-top:12px">Equipe: ${(a.staffEmails||[]).map(esc).join(', ')}</div>` : ''}
           </div>
 
           <div class="flex gap-10">
-            ${a.status==='active' ? `<button class="btn btn-danger flex-1" onclick="setArenaStatus('${snap.id}','suspended')">⛔ Suspender</button>` : ''}
-            ${a.status==='suspended' ? `<button class="btn btn-success flex-1" onclick="setArenaStatus('${snap.id}','active')">✅ Reativar</button>` : ''}
-            ${a.status==='trial' ? `<button class="btn btn-primary flex-1" onclick="setArenaStatus('${snap.id}','active')">✅ Ativar</button>` : ''}
-            <button class="btn btn-outline flex-1" onclick="editArenaPlan('${snap.id}',${a.planValue||199})">💰 Editar plano</button>
+            ${a.status==='active' ? `<button class="btn btn-danger flex-1" onclick="setArenaStatus('${snap.id}','suspended')">${icon('ban')} Suspender</button>` : ''}
+            ${a.status==='suspended' ? `<button class="btn btn-success flex-1" onclick="setArenaStatus('${snap.id}','active')">${icon('circle-check')} Reativar</button>` : ''}
+            ${a.status==='trial' ? `<button class="btn btn-primary flex-1" onclick="setArenaStatus('${snap.id}','active')">${icon('circle-check')} Ativar</button>` : ''}
+            <button class="btn btn-outline flex-1" onclick="editArenaPlan('${snap.id}',${a.planValue||199})">${icon('wallet')} Editar plano</button>
           </div>
         </div>`;
     });
@@ -4162,7 +4170,7 @@ window.setArenaStatus = async function(arenaId, status) {
   const labels = {active:'ativar', suspended:'suspender'};
   confirmModal(`${status==='suspended'?'Suspender':'Reativar'} arena?`,
     `Tem certeza que deseja ${labels[status]} esta arena?`,
-    status==='suspended'?'⛔':'✅',
+    status==='suspended'?icon('ban','ic-lg'):'✅',
     async () => {
       showLoading();
       try {
@@ -4180,7 +4188,7 @@ window.changeArenaGestor = async function(arenaId) {
   if (!snap.exists) return;
   const a = snap.data();
   showModal({
-    icon:'✏️', iconBg:'var(--primary-dim)',
+    icon:icon('pencil'), iconBg:'var(--primary-dim)',
     title:'Trocar dono da arena',
     html:`<div style="margin-top:16px;text-align:left">
       <div class="field"><label>Nome do novo dono</label>
@@ -4189,7 +4197,7 @@ window.changeArenaGestor = async function(arenaId) {
         <input class="input" id="ng-email" type="email" value=""></div>
       <div class="field" style="margin-top:10px"><label>Telefone</label>
         <input class="input" id="ng-phone" value=""></div>
-      <div class="t-sm t-dim" style="margin-top:12px">⚠️ O dono atual (${esc(a.gestorName||a.gestorEmail)||'—'}) perde o acesso de gestão. Um novo código de convite será gerado.</div>
+      <div class="t-sm t-dim" style="margin-top:12px">${icon('triangle-alert')} O dono atual (${esc(a.gestorName||a.gestorEmail)||'—'}) perde o acesso de gestão. Um novo código de convite será gerado.</div>
     </div>`,
     actions:[
       {label:'Cancelar', style:'btn-outline', close:true},
@@ -4218,7 +4226,7 @@ window.changeArenaGestor = async function(arenaId) {
       }
       hideLoading();
       showModal({
-        icon:'🔑', iconBg:'var(--success-dim)',
+        icon:icon('key-round'), iconBg:'var(--success-dim)',
         title:'Dono alterado!',
         text:`Envie para ${name} (${email}): acesse o app → "Tenho um convite de gestor" → código ${newCode}`,
         actions:[{label:'Copiar código', style:'btn-primary', id:'copy-gcode', close:true},
@@ -4233,7 +4241,7 @@ window.changeArenaGestor = async function(arenaId) {
 };
 
 window.regenArenaInvite = async function(arenaId) {
-  confirmModal('Gerar novo código?','O código de convite atual deixa de funcionar.','🔄', async () => {
+  confirmModal('Gerar novo código?','O código de convite atual deixa de funcionar.',icon('refresh-cw','ic-lg'), async () => {
     showLoading();
     try {
       const newCode = generateInviteCode();
@@ -4247,7 +4255,7 @@ window.regenArenaInvite = async function(arenaId) {
 
 window.editArenaPlan = function(arenaId, currentValue) {
   showModal({
-    icon:'💰', iconBg:'var(--primary-dim)',
+    icon:icon('wallet'), iconBg:'var(--primary-dim)',
     title:'Editar plano',
     html:`<div style="margin-top:16px">
       <input class="input" id="plan-value" type="number" value="${currentValue}" min="0">
@@ -4304,7 +4312,7 @@ function screenSANewArena() {
           <input class="input" id="na-value" type="number" value="199" min="0">
         </div>
       </div>
-      <button class="btn btn-primary btn-full btn-lg" id="btn-create-arena">🏟️ Cadastrar arena</button>
+      <button class="btn btn-primary btn-full btn-lg" id="btn-create-arena">${icon('warehouse')} Cadastrar arena</button>
     </div>
   </div>`;
 }
@@ -4344,7 +4352,7 @@ function attachSANewArena() {
       hideLoading();
       confetti();
       showModal({
-        icon:'🏟️', iconBg:'var(--success-dim)',
+        icon:icon('warehouse'), iconBg:'var(--success-dim)',
         title:'Arena cadastrada!',
         text:`${name} criada! Código de convite do gestor: 🔑 ${inviteCode} — envie para ${gemail}.`,
         actions:[{label:'Ótimo!', style:'btn-success', close:true}],
@@ -4359,9 +4367,9 @@ function attachSANewArena() {
 // ═══════════════════════════════════════════════════════════
 function screenSAFinancial() {
   return `<div class="screen">
-    <div class="topbar"><span class="topbar-title">💰 Financeiro</span></div>
+    <div class="topbar"><span class="topbar-title">${icon('wallet')} Financeiro</span></div>
     <div id="financial-body" style="padding:0 20px">
-      <div class="empty-state"><div class="empty-emoji">⌛</div></div>
+      <div class="empty-state"><div class="empty-emoji">${icon('hourglass')}</div></div>
     </div>
   </div>`;
 }
@@ -4404,22 +4412,22 @@ function liveSAFinancial() {
 // ═══════════════════════════════════════════════════════════
 function screenSASettings() {
   return `<div class="screen">
-    <div class="topbar"><span class="topbar-title">⚙️ Configurações</span></div>
+    <div class="topbar"><span class="topbar-title">${icon('settings')} Configurações</span></div>
     <div class="settings-group">
       <div class="settings-label">Plataforma</div>
-      <div class="settings-item"><div class="settings-icon si-blue">💰</div><div class="flex-1"><div class="t-h3">Planos disponíveis</div></div><span class="settings-chevron">›</span></div>
-      <div class="settings-item"><div class="settings-icon si-orange">📱</div><div class="flex-1"><div class="t-h3">Mensagens padrão</div></div><span class="settings-chevron">›</span></div>
+      <div class="settings-item"><div class="settings-icon si-blue">${icon('wallet')}</div><div class="flex-1"><div class="t-h3">Planos disponíveis</div></div><span class="settings-chevron">›</span></div>
+      <div class="settings-item"><div class="settings-icon si-orange">${icon('smartphone')}</div><div class="flex-1"><div class="t-h3">Mensagens padrão</div></div><span class="settings-chevron">›</span></div>
     </div>
     <div class="settings-group">
       <div class="settings-label">Conta</div>
       <div class="settings-item" onclick="logoutUser()">
-        <div class="settings-icon si-red">🚪</div>
+        <div class="settings-icon si-red">${icon('log-out')}</div>
         <div class="flex-1"><div class="t-h3">Sair</div></div>
         <span class="settings-chevron">›</span>
       </div>
     </div>
     <div style="padding:24px 20px;text-align:center">
-      <img src="icons/icon-192.png" class="logo-img logo-img-sm" alt="ArenaFlow" style="display:block;margin:0 auto 12px">
+      <div class="logo-mark" style="width:52px;height:52px;font-size:22px;border-radius:16px;margin:0 auto 12px">AF</div>
       <div class="t-sm t-muted">ArenaFlow v1.0</div>
       <div class="t-xs t-dim">by você 👑</div>
     </div>
@@ -4457,56 +4465,6 @@ function getWeekDays() {
 }
 
 // Check badges for student after attending class
-async function checkAndAwardBadges(uid, arenaId) {
-  try {
-    const snap = await db.collection('users').doc(uid).get();
-    if (!snap.exists) return;
-    const profile = snap.data();
-    const earned = profile.badges || [];
-    const total = profile.totalClasses || 0;
-    const streakWeeks = profile.streakWeeks || 0;
-    const newBadges = [];
-
-    BADGES.forEach(b => {
-      if (earned.includes(b.id)) return;
-      if (b.type === 'classes' && total >= b.req) newBadges.push(b);
-      if (b.type === 'streak_weeks' && streakWeeks >= b.req) newBadges.push(b);
-    });
-
-    if (newBadges.length > 0) {
-      await db.collection('users').doc(uid).update({
-        badges: firebase.firestore.FieldValue.arrayUnion(...newBadges.map(b=>b.id))
-      });
-      // Update student in arena
-      if (arenaId) {
-        await db.collection('arenas').doc(arenaId).collection('students').doc(uid).update({
-          badges: firebase.firestore.FieldValue.arrayUnion(...newBadges.map(b=>b.id))
-        });
-        // Add to community feed
-        for (const b of newBadges) {
-          await db.collection('arenas').doc(arenaId).collection('feed').add({
-            type: 'badge', authorId: uid, authorName: profile.name,
-            text: `conquistou o emblema ${b.emoji} ${b.name}!`,
-            reactions: {},
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
-      }
-      // Show badge unlock animation
-      newBadges.forEach((b, i) => {
-        setTimeout(() => {
-          confetti();
-          showModal({
-            icon: b.emoji, iconBg:'var(--primary-dim)',
-            title:'Novo Emblema!',
-            text:'Você conquistou: ' + b.name,
-            actions:[{label:'Incrível! 🎉', style:'btn-success', close:true}]
-          });
-        }, i * 1500);
-      });
-    }
-  } catch(e) { console.error('Badge check error:', e); }
-}
 
 // ── INIT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
