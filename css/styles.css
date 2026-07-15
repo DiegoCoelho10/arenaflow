@@ -875,3 +875,11 @@ select.input { appearance: none; cursor: pointer; }
 .badge-emoji .ic { width: 30px; height: 30px; }
 .splash-illustration .ic { width: 64px; height: 64px; opacity: .9; }
 .alert-banner-icon .ic { width: 20px; height: 20px; }
+
+/* logo real (ícone do app) nas telas de entrada */
+.logo-img {
+  width: 88px; height: 88px;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(216,90,48,.35), 0 2px 8px rgba(0,0,0,.4);
+}
+.logo-img-sm { width: 54px; height: 54px; border-radius: 15px; }
