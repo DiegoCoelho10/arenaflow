@@ -986,6 +986,7 @@ function screenRegister() {
     </div>
     <div style="padding:20px 24px">
       <button class="btn btn-primary btn-full btn-lg" id="reg-next">Continuar →</button>
+      <p class="t-xs t-muted t-center" style="margin-top:12px">Ao criar sua conta, você concorda com os <a href="legal.html" target="_blank" style="color:var(--primary)">Termos de Uso e Privacidade</a></p>
       <div class="auth-footer" style="margin-top:12px">
         Já tem conta? <a onclick="App.go('${SCREENS.LOGIN}')" style="cursor:pointer">Entrar</a>
       </div>
