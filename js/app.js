@@ -1371,7 +1371,7 @@ function screenStudentHome() {
   const firstName = (p.name||'Aluno').split(' ')[0];
   const hour = new Date().getHours();
   const saud = hour < 12 ? 'Bom dia' : hour < 18 ? 'E aí' : 'Boa noite';
-  const cover = App.arena?.coverBase64 || App.arena?.photoBase64;
+  const cover = App.arena?.coverBase64 || App.arena?.photoBase64 || 'imgs/capa-padrao.jpg';
   const heroStyle = cover
     ? 'background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.94)),url(' + JSON.stringify(cover) + ');background-size:cover;background-position:center;'
     : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);';
@@ -1430,7 +1430,7 @@ function liveStudentHome() {
     // Atualiza o hero da home sem recarregar a tela toda
     const hero = document.querySelector('.home-hero');
     if (hero && mudouCapa) {
-      const cover = a.coverBase64 || a.photoBase64;
+      const cover = a.coverBase64 || a.photoBase64 || 'imgs/capa-padrao.jpg';
       hero.style.cssText = cover
         ? `background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.94)),url(${JSON.stringify(cover)});background-size:cover;background-position:center;`
         : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);';
@@ -2389,7 +2389,7 @@ function screenAdminHome() {
   const a = App.arena || {};
   const g = App.profile || {};
   return `<div class="screen">
-    <div class="home-hero" style="${(a.coverBase64||a.photoBase64) ? 'background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.92)),url(' + JSON.stringify(a.coverBase64||a.photoBase64) + ');background-size:cover;background-position:center;' : 'background:linear-gradient(160deg,rgba(216,90,48,0.18) 0%,transparent 60%),linear-gradient(220deg,rgba(245,166,35,0.12) 0%,transparent 55%);'}">
+    <div class="home-hero" style="background-image:linear-gradient(to bottom,rgba(26,20,17,0.45),rgba(26,20,17,0.92)),url(${JSON.stringify(a.coverBase64||a.photoBase64||'imgs/capa-padrao.jpg')});background-size:cover;background-position:center;">
       <div class="flex items-center justify-between">
         <div class="home-greeting">
           <small>Painel da Arena</small>${esc(a.name)||'Arena'} ${icon('warehouse','ic-sm')}
@@ -3691,8 +3691,8 @@ function screenAdminSettings() {
         <div class="t-sm t-muted" style="margin-bottom:12px">A foto e a cor aparecem para todos os alunos da sua arena.</div>
         <div style="position:relative;height:120px;border-radius:14px;overflow:hidden;margin-bottom:12px;background:#4A1B0C"
              id="cover-preview">
-          ${(a.coverBase64 || a.photoBase64)
-            ? `<img src="${a.coverBase64 || a.photoBase64}" style="width:100%;height:100%;object-fit:cover">`
+          ${true
+            ? `<img src="${a.coverBase64 || a.photoBase64 || 'imgs/capa-padrao.jpg'}" style="width:100%;height:100%;object-fit:cover">`
             : `<div style="position:absolute;inset:0;background:linear-gradient(160deg,#993C1D,#4A1B0C)"></div>
                <div style="position:absolute;top:18px;right:34px;width:36px;height:36px;border-radius:50%;background:#FAC775"></div>`}
           <div style="position:absolute;bottom:8px;left:12px;font-size:12px;color:#FAECE7;font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,.6)">${esc(a.name)||'Sua arena'}</div>
@@ -3882,10 +3882,12 @@ window.uploadArenaCover = function(ev) {
       }
       showLoading();
       try {
-        await db.collection('arenas').doc(App.arenaId).update({
-          coverBase64: base64,
-          photoBase64: firebase.firestore.FieldValue.delete()
-        });
+        // Duas escritas separadas: as Rules autorizam coverBase64 (dono)
+        // e photoBase64 (operacional) em ramos diferentes — juntas, negam.
+        await db.collection('arenas').doc(App.arenaId).update({ coverBase64: base64 });
+        await db.collection('arenas').doc(App.arenaId)
+          .update({ photoBase64: firebase.firestore.FieldValue.delete() })
+          .catch(() => {});
         App.arena = { ...App.arena, coverBase64: base64, photoBase64: null };
         hideLoading();
         showToast('Capa atualizada! 📸','success');
