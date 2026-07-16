@@ -993,7 +993,7 @@ function screenRegister() {
       <div id="student-code-section" style="display:none;margin-top:16px">
         <div class="field">
           <label>Código da arena (opcional)</label>
-          <input class="input" id="reg-arena-code" type="text" placeholder="Ex: AJJ123"
+          <input class="input" autocomplete="one-time-code" id="reg-arena-code" type="text" placeholder="Ex: AJJ123"
             maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-size:18px;font-weight:700;text-align:center">
           <span class="input-hint">Peça o código para o gestor da sua arena</span>
         </div>
@@ -1013,7 +1013,7 @@ function regFormStep1() {
   </div>
   <div class="field">
     <label>Código da arena (opcional)</label>
-    <input class="input" id="reg-arena-code" type="text" placeholder="Ex: AJJ123"
+    <input class="input" autocomplete="one-time-code" id="reg-arena-code" type="text" placeholder="Ex: AJJ123"
       maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-size:18px;font-weight:700;text-align:center">
     <span class="input-hint">Peça o código para o gestor da sua arena</span>
   </div>`;
@@ -1214,7 +1214,7 @@ function screenInvite() {
       </div>
       <div class="field">
         <label>Código de convite</label>
-        <input class="input" id="inv-code" type="text" placeholder="Ex: AB3X7K"
+        <input class="input" autocomplete="one-time-code" id="inv-code" type="text" placeholder="Ex: AB3X7K"
           maxlength="6" style="text-transform:uppercase;letter-spacing:6px;
           font-size:22px;font-weight:800;text-align:center">
       </div>
@@ -2296,7 +2296,7 @@ window.showBadgeDetail = function(badgeId, isEarned) {
     title:'Entrar em uma arena',
     text:'Digite o código fornecido pelo gestor da sua arena:',
     html:`<div style="margin-top:16px">
-      <input class="input" id="join-code" type="text" placeholder="Ex: AJJ123"
+      <input class="input" autocomplete="one-time-code" id="join-code" type="text" placeholder="Ex: AJJ123"
         maxlength="6" style="text-transform:uppercase;letter-spacing:4px;
         font-size:22px;font-weight:800;text-align:center">
     </div>`,
