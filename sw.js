@@ -1,9 +1,9 @@
-const CACHE_NAME = 'arenaflow-v21';
+const CACHE_NAME = 'arenaflow-v22';
 const ASSETS = [
   './', './index.html', './css/styles.css',
   './js/firebase-config.js', './js/app.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png',
-  './imgs/bg1.jpg', './imgs/bg2.jpg', './imgs/bg3.jpg'
+  './imgs/bg1.jpg', './imgs/bg2.jpg', './imgs/bg3.jpg', './imgs/capa-padrao.jpg'
 ];
 
 self.addEventListener('install', e => {
