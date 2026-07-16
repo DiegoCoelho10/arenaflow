@@ -883,3 +883,12 @@ select.input { appearance: none; cursor: pointer; }
   box-shadow: 0 8px 32px rgba(216,90,48,.35), 0 2px 8px rgba(0,0,0,.4);
 }
 .logo-img-sm { width: 54px; height: 54px; border-radius: 15px; }
+
+
+/* ── AURORA sutil de marca nas telas internas ─────────────── */
+body {
+  background:
+    radial-gradient(640px 420px at 88% -6%, rgba(216,90,48,0.09), transparent 62%),
+    radial-gradient(520px 380px at -8% 104%, rgba(245,166,35,0.055), transparent 60%),
+    var(--bg);
+}
